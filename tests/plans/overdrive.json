@@ -1,0 +1,1 @@
+[{"f": 5, "key": "E", "hold": 90}, {"f": 100, "expect": "lighthouse.overdrives==1"}, {"f": 100, "expect": "island.winch.charges==0"}]

@@ -18,12 +18,16 @@ var player: Player
 var audio: Soundscape
 var trails: WetTrails
 var weather: StormWeather
+var fire: FireSystem
 var freeze: bool = false
 
 var spawned: int = 0
 var killed: int = 0
 var killed_by_rifle: int = 0
 var killed_by_light: int = 0
+var killed_by_fire: int = 0
+var captains_spawned: int = 0
+var captains_killed: int = 0
 var reached_lighthouse: int = 0
 
 var _list: Array[Drowned] = []
@@ -43,10 +47,12 @@ func setup(isl: Island, oc: Ocean, lf: LightField, lh: Lighthouse, pl: Player, s
 
 
 ## Spawn a Drowned at world (x, z). `emerged` = already risen (debug spawns); otherwise it rises from the sea.
-func spawn(xz: Vector2, emerged: bool) -> Drowned:
+func spawn(xz: Vector2, emerged: bool, kind: String = "drowned") -> Drowned:
 	var d: Drowned = Drowned.new()
-	d.name = "Drowned%d" % _next_id
-	d.setup(self, _next_id, xz, emerged)
+	d.name = ("Captain%d" if kind == "captain" else "Drowned%d") % _next_id
+	d.setup(self, _next_id, xz, emerged, kind)
+	if kind == "captain":
+		captains_spawned += 1
 	_next_id += 1
 	spawned += 1
 	_list.append(d)
@@ -101,13 +107,38 @@ func separation_push(me: Drowned, radius: float) -> Vector3:
 
 
 func on_death(d: Drowned, by: String) -> void:
-	if by == "rifle" or by == "light":
+	if by == "rifle" or by == "light" or by == "fire":
 		killed += 1
 		if by == "rifle":
 			killed_by_rifle += 1
-		else:
+		elif by == "light":
 			killed_by_light += 1
+		else:
+			killed_by_fire += 1
 		enemy_killed.emit(d)
+
+
+## True when a living captain (other than `me`) glides within `radius` of `me` (XZ).
+func near_captain(me: Drowned, radius: float) -> bool:
+	for o: Drowned in _list:
+		if o == me or o.kind != "captain" or not o.is_alive():
+			continue
+		var d: Vector3 = o.global_position - me.global_position
+		if Vector2(d.x, d.z).length() <= radius:
+			return true
+	return false
+
+
+## A captain fell: the Drowned that were following it falter.
+func on_captain_died(c: Drowned) -> void:
+	if c.dying_by != "dawn":
+		captains_killed += 1
+	for o: Drowned in _list:
+		if o == c or not o.is_alive():
+			continue
+		var d: Vector3 = o.global_position - c.global_position
+		if Vector2(d.x, d.z).length() <= c.aura_radius:
+			o.rout()
 
 
 ## Rifle kill feedback (SPEC 4.8): splash, brief warm spark and the 3D kill thud at the hit point.
@@ -142,10 +173,16 @@ func telemetry() -> Dictionary:
 	var nearest: float = -1.0
 	var items: Array = []
 	var alive: int = 0
+	var captains_alive: int = 0
+	var wounded: int = 0
 	for d: Drowned in _list:
 		if d.state == "dying":
 			continue
 		alive += 1
+		if d.kind == "captain":
+			captains_alive += 1
+		if d.hp < d.max_hp:
+			wounded += 1
 		if d.lit:
 			lit_n += 1
 		if d.revealed:
@@ -173,6 +210,11 @@ func telemetry() -> Dictionary:
 		"killed": killed,
 		"killed_by_rifle": killed_by_rifle,
 		"killed_by_light": killed_by_light,
+		"killed_by_fire": killed_by_fire,
+		"captains_spawned": captains_spawned,
+		"captains_alive": captains_alive,
+		"captains_killed": captains_killed,
+		"wounded": wounded,
 		"lit_count": lit_n,
 		"revealed_count": rev_n,
 		"mean_speed_lit": snappedf(lit_sum / lit_gliding, 0.001) if lit_gliding > 0 else 0.0,

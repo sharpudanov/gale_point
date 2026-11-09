@@ -1,0 +1,29 @@
+# Regression suite run by `tools/sim.sh --all`. One scenario per line:  <plan-name> <sim args...>
+# Plan = tests/plans/<plan-name>.json. Args are whitespace-separated (no quotes; ';' is fine).
+smoke --frames=120 --expect=physics_frames>=120
+move --frames=300 --no_waves --no_lightning --expect=player.yaw_deg<=150 --expect=player.yaw_deg>=138 --expect=player.pos.2>=12 --expect=player.on_floor==true --expect=player.hp==3 --expect=camera.fov>=71
+escalation --frames=3900 --night_len=60 --god --expect=time.phase==won --expect=waves.index==6 --expect=enemies.alive==0 --expect=enemies.captains_spawned>=3 --expect=buoys.tolls==6 --expect=audio.bells==21
+rifle --frames=400 --no_waves --no_lightning --expect=weapon.rifle_reserve==8 --expect=weapon.rifle_state==ready --expect=audio.rifle_cracks==2 --expect=weapon.hits_dark==0
+flare_fire --frames=1450 --no_waves --no_lightning --expect=flares.active==0 --expect=flares.left==2 --expect=flares.drowned==0 --expect=audio.flare_hiss_active==false
+crate --frames=780 --night_len=60 --god --no_lightning --expect=crate.stocked==true --expect=crate.refills==1
+rifle_dark --frames=60 --no_waves --no_lightning --spawn_at=0,18 --freeze_enemies --aim --expect=enemies.alive==1 --expect=enemies.killed==0 --expect=weapon.hits_lit==0
+rifle_lit --frames=120 --no_waves --no_lightning --spawn_at=0,18 --freeze_enemies --aim --place_flare=16 --expect=enemies.killed==1 --expect=enemies.killed_by_rifle==1 --expect=enemies.alive==0 --expect=flares.left==3 --expect=audio.kill_thuds==1
+flare_light --frames=600 --no_waves --no_lightning --god --place_flare=20 --spawn_at=3,30;-25,26 --expect=enemies.killed_by_light>=1
+beam --frames=180 --no_waves --no_lightning --freeze_enemies --beam_yaw=0 --beam_still --spawn_at=0,-90 --expect=enemies.list.0.hp<=50
+lightning --frames=180 --no_waves --flash_at=1.0 --spawn_at=-4,26;4,26 --freeze_enemies --aim --expect=storm.lightning_count==1 --expect=enemies.killed==1 --expect=enemies.alive==1
+damage_death --frames=600 --no_waves --no_lightning --spawn_at=0,16;0,24;0,32 --expect=player.hp==0 --expect=player.alive==false --expect=time.phase==dead --expect=audio.moans_played>=1
+lighthouse_reach --frames=480 --no_waves --no_lightning --player_at=-20,-20 --spawn_at=0,20 --expect=enemies.reached_lighthouse==1 --expect=player.hp==2 --expect=lighthouse.guttering==true --expect=enemies.alive==0
+full_night --frames=19500 --every=1200 --god --expect=time.phase==won --expect=waves.index==6 --expect=enemies.alive==0 --expect=player.alive==true --expect=waves.peak_alive<=14 --expect=fx.card==Dawn. --expect=enemies.spawned>=40 --expect=enemies.captains_spawned==4 --expect=buoys.tolls==6
+# --- Iteration 1: TTK, readability, shove, fire synergy, captains, bells, island props, sandbox ---
+rifle_dark_live --frames=60 --no_waves --no_lightning --spawn_at=0,18 --aim --ads --expect=enemies.alive==1 --expect=weapon.hits_head==0
+two_hit_dark --frames=110 --no_waves --no_lightning --spawn_at=0,26 --aim --ads --expect=weapon.hits_dark==2 --expect=weapon.hits_lit==0 --expect=weapon.hits_head==0 --expect=enemies.alive==0
+headshot_dark --frames=60 --no_waves --no_lightning --spawn_at=0,18 --aim --aim_part=head --ads --expect=enemies.killed_by_rifle==1 --expect=weapon.hits_lit==0 --expect=audio.deflects==0
+shove --frames=120 --no_waves --no_lightning --player_at=0,7 --look=180,0 --spawn_at=0,9.6 --expect=player.hp==3 --expect=enemies.alive==1 --expect=audio.shove_hits==1
+flare_impale --frames=420 --no_waves --no_lightning --freeze_enemies --spawn_at=0,16 --aim --expect=enemies.killed_by_fire==1 --expect=flares.drowned==0
+flare_burst --frames=40 --no_waves --no_lightning --freeze_enemies --place_flare=10 --spawn_at=2,20;-2,14 --aim_flare --ads --expect=flares.active==0 --expect=weapon.hits_lit==0 --expect=enemies.list.0.hp<=40 --expect=enemies.list.1.hp<=40
+captain_lantern --frames=240 --no_waves --no_lightning --freeze_enemies --spawn_at=0,18 --spawn_kind=captain --aim --aim_part=lantern --ads --expect=enemies.killed_by_fire==1 --expect=enemies.captains_killed==1
+cask --frames=220 --no_waves --no_lightning --aim_cask=4 --ads --spawn_at=5,19 --expect=fire.oil_active==1 --expect=audio.whoomphs==1 --expect=enemies.killed_by_fire==1 --expect=player.hp==3
+bells --frames=700 --night_len=60 --god --no_lightning --expect=buoys.tolls==2 --expect=buoys.strokes==3 --expect=audio.bells==3
+brazier_flare --frames=60 --no_waves --no_lightning --player_at=18,10.4 --look=240.4,0 --place_flare=3.6 --expect=island.braziers_lit==1 --expect=player.in_light==true
+overdrive --frames=420 --no_waves --no_lightning --player_at=0,-5.3 --look=0,0 --freeze_enemies --spawn_at=0,-46 --expect=enemies.killed_by_light==1 --expect=lighthouse.overdrive_left>0
+sandbox_keys --frames=40 --expect=sandbox.flares==1 --expect=player.hp==3 --expect=waves.forced==1

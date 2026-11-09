@@ -23,6 +23,11 @@ var waves: WaveDirector
 var projectiles: Node3D
 var soundscape: Soundscape
 var post_fx: PostFx
+var fire: FireSystem
+var props: IslandProps
+var buoys: BellBuoys
+var sandbox: Sandbox
+var _placed_flare: Flare
 
 ## Screenshot hotkey output folder (gitignored via .captures/).
 @export var screenshot_dir: String = "res://.captures/screenshots"
@@ -72,6 +77,7 @@ func _build() -> void:
 	projectiles = _add(Node3D.new(), "Projectiles") as Node3D
 	trails = _add(WetTrails.new(), "WetTrails") as WetTrails
 	enemies = _add(Enemies.new(), "Enemies") as Enemies
+	fire = _add(FireSystem.new(), "Fire") as FireSystem
 
 	player = _add(Player.new(), "Player") as Player
 	var start: Vector2 = args.player_at if args.has_player_at else Vector2(0.0, 6.0)
@@ -88,21 +94,70 @@ func _build() -> void:
 	weapons.setup(player, player.camera, projectiles, ocean, light_field, soundscape, weather, enemies)
 	weapons.fire_at = args.fire_at
 	weapons.force_ads = args.ads
+	weapons.shove_at = args.shove_at
+	weapons.flare_gun.enemies = enemies
+	weapons.flare_gun.fire = fire
 	player.weapons = weapons
 	if args.place_flare >= 0.0:
 		_place_flare(args.place_flare)
 	enemies.setup(island, ocean, light_field, lighthouse, player, soundscape, trails, weather)
+	enemies.fire = fire
+	fire.setup(enemies, light_field, soundscape, island, weather)
 	enemies.freeze = args.freeze_enemies
-	for xz: Vector2 in args.spawn_at:
-		enemies.spawn(xz, true)
+	for i: int in args.spawn_at.size():
+		var xz: Vector2 = args.spawn_at[i]
+		var d: Drowned = enemies.spawn(xz, true, args.spawn_kind if i == 0 else "drowned")
+		if i == 0 and args.spawn_hp >= 0.0:
+			d.hp = args.spawn_hp
 		if args.pre_trails:
 			_pre_trail(xz)
-	if args.aim and enemies.first() != null:
-		player.aim_at(enemies.first().chest_position())
+	var first: Drowned = enemies.first()
+	if args.impale_first and first != null:
+		var f: Flare = weapons.flare_gun.spawn_flare(first.chest_position(), Vector3.ZERO, 3.0)
+		f.attach_to(first, first.chest_position() + Vector3(0.0, 0.0, -0.3))
+	if args.aim_flare and _placed_flare != null:
+		player.aim_at(_placed_flare.global_position)
+	elif args.aim and first != null:
+		match args.aim_part:
+			"head":
+				player.aim_at(first.global_position + Vector3(0.0, first.head_center_y * first.size_scale, 0.0))
+			"lantern":
+				if first.lantern != null:
+					player.aim_at(first.lantern.centre())
+			_:
+				player.aim_at(first.chest_position())
 
 	waves = _add(WaveDirector.new(), "WaveDirector") as WaveDirector
 	waves.enabled = not args.no_waves
 	waves.setup(clock, enemies, lighthouse.crate)
+
+	buoys = BellBuoys.new()
+	buoys.setup(ocean, soundscape)
+	_add(buoys, "BellBuoys")
+	waves.wave_warning.connect(buoys.on_wave_warning)
+	props = _add(IslandProps.new(), "IslandProps") as IslandProps
+	props.build(island, fire, enemies, light_field, soundscape, weather, lighthouse, player)
+	waves.wave_started.connect(props.on_wave_started)
+	if args.light_braziers:
+		props.light_all_braziers()
+	if args.aim_cask >= 0 and args.aim_cask < props.casks.size():
+		var c: OilCask = props.casks[args.aim_cask]
+		player.aim_at(c.global_position + Vector3(0.0, c.height * 0.5, 0.0))
+	if args.overdrive:
+		lighthouse.start_overdrive(player)
+	if args.toll > 0:
+		var fwd: Vector3 = -player.global_transform.basis.z
+		buoys.toll(buoys.nearest(atan2(fwd.z, fwd.x)), args.toll)
+	if not ShotPresets.has_preset(shot):
+		sandbox = Sandbox.new()
+		sandbox.main = self
+		sandbox.player = player
+		sandbox.weapons = weapons
+		sandbox.enemies = enemies
+		sandbox.waves = waves
+		sandbox.weather = weather
+		sandbox.island = island
+		_add(sandbox, "Sandbox")
 
 	# The director runs after the clock (tree order) and pushes into everything built above.
 	add_child(director)
@@ -139,7 +194,7 @@ func _place_flare(d: float) -> void:
 	fwd = fwd.normalized()
 	var p: Vector3 = player.global_position + fwd * d
 	p.y = island.height_at(p.x, p.z) + 0.06
-	weapons.flare_gun.spawn_flare(p, Vector3.ZERO, 3.0)
+	_placed_flare = weapons.flare_gun.spawn_flare(p, Vector3.ZERO, 3.0)
 
 
 func _add(node: Node, n: String) -> Node:
@@ -244,7 +299,14 @@ func get_telemetry() -> Dictionary:
 		"lamp_on": lighthouse.lamp_on,
 		"guttering": lighthouse.is_guttering(),
 		"beam_yaw": _r(lighthouse.beam_yaw()),
+		"overdrive_left": _r(lighthouse.overdrive_left()),
+		"overdrives": lighthouse.overdrives,
 	}
+	t["fire"] = fire.telemetry()
+	t["island"] = props.telemetry()
+	t["buoys"] = buoys.telemetry()
+	if sandbox != null:
+		t["sandbox"] = sandbox.telemetry()
 	t["fx"] = post_fx.telemetry()
 	t["audio"] = soundscape.telemetry()
 	return t

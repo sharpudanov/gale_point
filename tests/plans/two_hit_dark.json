@@ -1,0 +1,7 @@
+[
+  {"f": 10, "mouse_button": "left", "hold": 3},
+  {"f": 16, "expect": "enemies.list.0.hp==50"},
+  {"f": 16, "expect": "enemies.wounded==1"},
+  {"f": 95, "mouse_button": "left", "hold": 3},
+  {"f": 101, "expect": "enemies.killed_by_rifle==1"}
+]

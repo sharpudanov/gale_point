@@ -1,0 +1,1 @@
+[{"f": 12, "key": "F", "hold": 2}, {"f": 20, "expect": "weapon.shove_hits==1"}, {"f": 30, "expect": "enemies.list.0.staggered==true"}, {"f": 30, "expect": "enemies.wounded==1"}]

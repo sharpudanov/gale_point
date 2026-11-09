@@ -19,6 +19,7 @@ signal hit_marker(kind: String)
 @export var hit_bottom: float = -0.3          ## cylinder floor, relative to the Drowned's feet
 @export var hit_top: float = 2.35             ## cylinder ceiling
 @export var hit_world_slack: float = 0.4      ## an enemy up to this far behind the world hit still counts
+@export var head_forgiveness_deg: float = 0.35 ## headshot sphere grows by tan(this) * range (a little aim assist at range)
 @export_group("")
 @export var damage_lit: float = 100.0
 @export var damage_dark: float = 0.0
@@ -63,6 +64,8 @@ var reserve: int = 10
 var shots_fired: int = 0
 var hits_lit: int = 0
 var hits_dark: int = 0
+var hits_head: int = 0
+var hits_gear: int = 0
 ## 0..1: how far the rifle is aimed down sights (set by WeaponHolder).
 var ads_amount: float = 0.0
 ## 0..1: how far the rifle is tipped for the reload animation (read by WeaponHolder if wanted).
@@ -288,65 +291,58 @@ func _hitscan(ads: bool) -> void:
 			if n != null and (n as Drowned).is_alive():
 				target = n as Drowned
 				best = from.distance_to(area_hit["position"] as Vector3)
+	# c) Shootable gear (burning flares, oil casks, captains' lanterns) in front of the body and the world.
+	var gear: ShootableGear = null
+	var gear_t: float = minf(best, world_dist + 0.05)
+	for n: Node in get_tree().get_nodes_in_group(ShootableGear.GROUP):
+		var g: ShootableGear = n as ShootableGear
+		if g == null:
+			continue
+		var tg: float = g.ray_hit(from, dir)
+		if tg >= 0.0 and tg < gear_t:
+			gear_t = tg
+			gear = g
+	if gear != null:
+		hits_gear += 1
+		gear.on_shot(from + dir * gear_t, dir)
+		hit_marker.emit("lit")
+		return
 	if target == null:
 		return
 	var point: Vector3 = from + dir * best
 	var info: Dictionary = _field.query(point) if _field != null else {"shootable": false}
 	var shootable: bool = target.hit_shootable(bool(info["shootable"]))
+	# Hood / face: a lethal headshot whatever the light.
+	var t_head: float = target.ray_vs_head(from, dir, tan(deg_to_rad(head_forgiveness_deg)) * best)
+	var headshot: bool = t_head >= 0.0 and t_head <= world_dist + hit_world_slack
+	if headshot:
+		hits_head += 1
+		point = from + dir * t_head
 	if shootable:
 		hits_lit += 1
 	else:
 		hits_dark += 1
-	target.on_rifle_hit(point, dir, shootable, damage_lit if shootable else damage_dark)
+	target.on_rifle_hit(point, dir, shootable, damage_lit if shootable else damage_dark, headshot)
 	if not target.is_alive():
 		hit_marker.emit("kill")
 	elif shootable:
 		hit_marker.emit("lit")
 	else:
 		hit_marker.emit("dark")
-	if not shootable:
+	if not shootable and not headshot:
 		_audio.play_deflect()
 
 
 ## Distance along the ray to the Drowned's hit cylinder (vertical axis through its visual centre, radius
-## hit_radius plus an angular forgiveness that grows with range), or -1 if the ray misses it.
+## hit_radius plus an angular forgiveness that grows with range), or -1 if the ray misses it. Scales with the
+## Drowned (a captain is 1.2x); at scale 1 this is exactly the original math (now in HitGeo).
 func ray_vs_drowned(from: Vector3, dir: Vector3, d: Drowned) -> float:
-	var centre: Vector3 = d.global_position + d.body_offset() + Vector3(0.0, 1.05, 0.0)
-	var y0: float = d.global_position.y + hit_bottom
-	var y1: float = d.global_position.y + hit_top
-	var to_c: Vector2 = Vector2(centre.x - from.x, centre.z - from.z)
-	var flat: Vector2 = Vector2(dir.x, dir.z)
-	var range_est: float = to_c.length()
-	var radius: float = hit_radius + tan(deg_to_rad(hit_forgiveness_deg)) * range_est
-	# Interval of t where the ray is inside the infinite cylinder (2D circle test in the XZ plane).
-	var lo: float = 0.0
-	var hi: float = shot_range
-	var a: float = flat.length_squared()
-	if a < 0.000001:
-		if to_c.length_squared() > radius * radius:
-			return -1.0
-	else:
-		var f: Vector2 = Vector2(from.x - centre.x, from.z - centre.z)
-		var b: float = f.dot(flat)
-		var c: float = f.length_squared() - radius * radius
-		var disc: float = b * b - a * c
-		if disc < 0.0:
-			return -1.0
-		var sq: float = sqrt(disc)
-		lo = maxf(lo, (-b - sq) / a)
-		hi = minf(hi, (-b + sq) / a)
-	# Clip to the y slab.
-	if absf(dir.y) < 0.000001:
-		if from.y < y0 or from.y > y1:
-			return -1.0
-	else:
-		var ta: float = (y0 - from.y) / dir.y
-		var tb: float = (y1 - from.y) / dir.y
-		lo = maxf(lo, minf(ta, tb))
-		hi = minf(hi, maxf(ta, tb))
-	if lo > hi:
-		return -1.0
-	return lo
+	var sc: float = d.size_scale
+	var centre: Vector3 = d.global_position + d.body_offset() + Vector3(0.0, 1.05 * sc, 0.0)
+	var range_est: float = Vector2(centre.x - from.x, centre.z - from.z).length()
+	var radius: float = hit_radius * sc + tan(deg_to_rad(hit_forgiveness_deg)) * range_est
+	return HitGeo.ray_vs_cylinder(from, dir, centre, radius, d.global_position.y + hit_bottom,
+		d.global_position.y + hit_top * sc, shot_range)
 
 
 # --- visuals ----------------------------------------------------------------------------------

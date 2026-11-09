@@ -1,0 +1,1 @@
+[{"f": 5, "key": "2", "hold": 2}, {"f": 45, "mouse_button": "left", "hold": 3}, {"f": 90, "expect": "flares.impaled==1"}, {"f": 90, "expect": "enemies.list.0.burning==true"}, {"f": 90, "expect": "enemies.list.0.lit==true"}]

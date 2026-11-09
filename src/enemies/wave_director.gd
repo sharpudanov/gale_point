@@ -7,6 +7,8 @@ extends Node
 
 signal wave_started(index: int)
 signal wave_cleared(index: int)
+## bell_lead seconds (x k) before a wave starts: the buoy nearest `center` (radians, XZ angle) tolls.
+signal wave_warning(index: int, center: float)
 
 @export var start_u: PackedFloat32Array = PackedFloat32Array([0.03, 0.18, 0.34, 0.50, 0.66, 0.82])
 @export var counts: PackedInt32Array = PackedInt32Array([3, 5, 7, 9, 11, 14])
@@ -15,6 +17,9 @@ signal wave_cleared(index: int)
 @export var sector_deg: float = 70.0
 @export var dawn_sink_time: float = 3.0
 @export var enabled: bool = true   ## false = --no_waves
+@export var bell_lead: float = 6.0   ## s (x k) of warning before each wave
+@export var captain_waves: PackedInt32Array = PackedInt32Array([2, 3, 4, 5])   ## 0-based: waves 3-6 open with a captain
+@export var sector_seed: int = 4049  ## sectors come from their own RNG (mixed with the run seed), not GameRng
 
 ## Wave number currently in play (0 before wave 1). Waves skipped by --night_t count as played.
 var index: int = 0
@@ -27,12 +32,21 @@ var _crate: AmmoCrate
 var _next: int = 0
 var _runs: Array[Dictionary] = []   ## {wave, left, timer, interval, center, members:Array[Drowned]}
 var _over: bool = false
+var _centers: PackedFloat32Array = PackedFloat32Array()
+var _warned: int = 0
+var forced: int = 0
 
 
 func setup(clock: NightClock, enemies: Enemies, crate: AmmoCrate) -> void:
 	_clock = clock
 	_enemies = enemies
 	_crate = crate
+	# Every wave's sector is known up front so the bells can toll before it rises.
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = sector_seed * 7919 + GameRng.get_seed()
+	_centers.resize(start_u.size())
+	for i: int in start_u.size():
+		_centers[i] = rng.randf() * TAU
 	wave_started.connect(_restock)
 	wave_cleared.connect(_restock)
 	clock.dawn_started.connect(_on_dawn)
@@ -43,6 +57,7 @@ func setup(clock: NightClock, enemies: Enemies, crate: AmmoCrate) -> void:
 	while _next < start_u.size() and start_u[_next] * clock.night_len < clock.night_t:
 		_next += 1
 	index = _next
+	_warned = _next
 	if not enabled:
 		_next = start_u.size()
 
@@ -63,6 +78,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if _clock.phase == "dead":
 		return
+	if _warned < start_u.size() and _warned <= _next and _clock.phase == "night" 			and _clock.night_t >= start_u[_warned] * _clock.night_len - bell_lead * _clock.k():
+		wave_warning.emit(_warned + 1, _centers[_warned])
+		_warned += 1
 	if _next < start_u.size() and _clock.u() >= start_u[_next] and _clock.phase == "night":
 		_start_wave(_next)
 		_next += 1
@@ -74,12 +92,14 @@ func _physics_process(delta: float) -> void:
 
 func _start_wave(i: int) -> void:
 	index = i + 1
+	GameRng.randf()   # keep the GameRng sequence of the original sector pick (moans, flares... stay seeded alike)
 	_runs.append({
 		"wave": index,
 		"left": counts[i],
 		"timer": 0.0,
 		"interval": intervals[i] * _clock.k(),
-		"center": GameRng.randf() * TAU,
+		"center": _centers[i],
+		"captains": 1 if captain_waves.has(i) else 0,
 		"members": [] as Array[Drowned],
 	})
 	wave_started.emit(index)
@@ -95,7 +115,11 @@ func _tick_spawns(delta: float) -> void:
 				run["timer"] = 0.0   # wait for a free slot; no catch-up burst afterwards
 				return
 			var members: Array[Drowned] = run["members"]
-			members.append(_enemies.spawn(_spawn_point(float(run["center"])), false))
+			var kind: String = "drowned"
+			if int(run["captains"]) > 0:
+				kind = "captain"
+				run["captains"] = int(run["captains"]) - 1
+			members.append(_enemies.spawn(_spawn_point(float(run["center"])), false, kind))
 			run["left"] = int(run["left"]) - 1
 			run["timer"] = float(run["timer"]) + float(run["interval"])
 
@@ -114,6 +138,19 @@ func _tick_clears() -> void:
 		if not any_alive:
 			_runs.remove_at(i)
 			wave_cleared.emit(int(run["wave"]))
+
+
+## F4 sandbox: start the next wave right now (its bell tolls at once). Returns false when none is left.
+func force_next() -> bool:
+	if _over or _next >= start_u.size() or _clock == null or _clock.phase != "night":
+		return false
+	if _warned <= _next:
+		wave_warning.emit(_next + 1, _centers[_next])
+		_warned = _next + 1
+	_start_wave(_next)
+	_next += 1
+	forced += 1
+	return true
 
 
 func _spawn_point(center: float) -> Vector2:
@@ -170,4 +207,7 @@ func telemetry() -> Dictionary:
 		"next_wave_t": snappedf(next_wave_t(), 0.001),
 		"pending": pending,
 		"peak_alive": peak_alive,
+		"warned": _warned,
+		"forced": forced,
+		"next_sector_deg": snappedf(rad_to_deg(_centers[_warned - 1]), 0.1) if _warned > 0 and _warned <= _centers.size() else -1.0,
 	}

@@ -21,6 +21,9 @@ var state: String = "ready"
 var left: int = 3
 var fired: int = 0
 var drowned: int = 0
+var impaled: int = 0
+var enemies: Enemies
+var fire: FireSystem
 
 var _camera: PlayerCamera
 var _player: Player
@@ -84,7 +87,10 @@ func spawn_flare(pos: Vector3, vel: Vector3, age: float) -> Flare:
 	var f: Flare = Flare.new()
 	f.name = "Flare"
 	f.setup(vel, _ocean, _field, _audio, _weather, age)
+	f.enemies = enemies
+	f.fire = fire
 	f.sank.connect(_on_flare_sank)
+	f.impaled.connect(func() -> void: impaled += 1)
 	_projectiles.add_child(f)
 	f.global_position = pos
 	return f

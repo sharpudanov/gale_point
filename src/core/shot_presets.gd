@@ -15,6 +15,14 @@ const PRESETS: Dictionary = {
 	"dawn": "--night_t=320 --no_waves --player_at=-6,-10 --look=270,2",
 	"dawn_sink": "--night_t=309 --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --spawn_at=-3,16;4,20;-8,26;9,30",
 	"dawn_card": "--night_t=319 --no_waves --player_at=-6,-10 --look=270,2",
+	"wounded_dark": "--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-3 --freeze_enemies --pre_trails --spawn_at=0.6,14;-3.5,19 --spawn_hp=45",
+	"captain": "--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-3 --freeze_enemies --pre_trails --spawn_at=0.5,16;-3,20;3.5,21 --spawn_kind=captain",
+	"torch": "--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-3 --freeze_enemies --spawn_at=0.5,17;-3,20;3.5,21 --impale_first",
+	"flare_burst": "--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-4 --freeze_enemies --place_flare=12 --spawn_at=2,20;-2,17 --aim_flare --fire_at=0.6",
+	"brazier": "--night_t=150 --no_waves --no_lightning --player_at=13,8.5 --look=242,-5 --light_braziers --spawn_at=17,13;20,17 --freeze_enemies",
+	"bells": "--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,1 --toll=3",
+	"overdrive": "--night_t=150 --no_waves --no_lightning --player_at=9,-5 --look=10,-4 --overdrive --freeze_enemies --spawn_at=-3,-44;4,-48;0,-52",
+	"shove": "--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-12 --freeze_enemies --spawn_at=0,9.3 --spawn_hp=60 --shove_at=0.85",
 	"drowned_close": "--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --pre_trails --place_flare=18 --spawn_at=0.5,11;-3,16",
 }
 

@@ -53,6 +53,8 @@ the next, bigger wave comes in a heavier storm.
 | `interact` | E | ammo crate |
 | `weapon_rifle` / `weapon_flare` | 1 / 2 | switch takes 0.45 s |
 | `weapon_toggle` | Q / mouse wheel | |
+| `melee` | F / V | rifle-butt shove (iteration 1): works mid bolt-cycle and mid reload |
+| `dev_spawn` / `dev_flare` / `dev_god` / `dev_wave` | F1 / F2 / F3 / F4 | live sandbox, normal play only (`Sandbox`, iteration 1) |
 | `release_mouse` | Esc | frees the cursor (no pause menu) |
 | `restart` | Enter | only on an end card |
 
@@ -298,7 +300,7 @@ layer 1).
 - Hitbox: Area3D on the Drowned root (not `_body`, which is animated every frame): capsule r 0.58, h 2.15 at y 1.05 plus a shoulder/sleeve box 1.10 x 0.75 x 0.65 at y 1.35. Casts shadows. The rifle does not rely on it alone: `Rifle._hitscan` casts a world-only ray (layer 1) for the travel distance, then tests every living Drowned with an exact ray-vs-vertical-cylinder check (centre = `global_position + _body.position + (0, 1.05, 0)`, y -0.3..+2.35, r 0.75 plus tan(1.2 deg) x range) and takes the closest one within 0.4 m of the world hit; the Area3D ray is only a fallback.
 - **Emission only while "searing" (lit, so shootable).** Unlit cloth has no emission and no rim. While `lit` the cloth shader (`lit_amount`, smoothed 0..1) adds `Color(1.0, 0.55, 0.22) * 2.2` as a grazing rim plus crack veins, strongest on hood and shoulders; the cracks widen and brighten as hp drops (`damage_amount = 1 - hp/100`). The face and eye sockets get warm emission, and a steam/ash particle emitter rises from the shoulders. All of it is shading and particles: no light node, never a gameplay light.
 - **Hit feedback (PostFx `Reticle`):** lit hit = 4 golden `#FFB266` X-ticks for 0.22 s (bigger on a kill); dark (immune) hit = cold slate-blue deflect ring for 0.25 s plus a dull metallic "tonk" (`Soundscape.play_deflect`). Hit/kill/dark counts: `fx.hit_markers`, `audio.deflects`.
-- **Hit rule:** `Drowned.hit_shootable()` = point is lit OR the Drowned is lit OR its chest is shootable (chest height 1.35). A lit hit does 100 (one-shot kill). **Live play only (not under `--freeze_enemies`): a hit on an unlit Drowned still does 35 damage (three shots kill) and shoves it back 1.4 m over 0.25 s**, with the dark-hit marker, deflect sound and a splash; light stays the big multiplier (instant kill plus burn DPS). With `--freeze_enemies` dark hits stay harmless (`rifle_dark.json`); `rifle_dark_live.json` covers the live rule. `LightField` flare occlusion rays run from 1.2 m above the queried point to 1.1 m above the flare, and `flare_radius` is 15.5 m.
+- **Hit rule:** `Drowned.hit_shootable()` = point is lit OR the Drowned is lit OR its chest is shootable (chest height 1.35). A lit hit does 100 (one-shot kill). **Headshot (iteration 1): a ray through the hood sphere (r 0.27 at 1.9 m, x captain scale, +tan 0.35 deg x range) kills outright in any light.** **Live play only (not under `--freeze_enemies`): a body hit on an unlit Drowned does 50 damage (two shots kill; iteration 1, was 35/three) and shoves it back 1.4 m over 0.25 s**, with the dark-hit marker, deflect sound and a splash; light stays the big multiplier (instant kill plus burn DPS). With `--freeze_enemies` dark hits stay harmless (`rifle_dark.json`); `rifle_dark_live.json` covers the live rule. `LightField` flare occlusion rays run from 1.2 m above the queried point to 1.1 m above the flare, and `flare_radius` is 15.5 m.
 
 **Waves** (u = t / night_len). Start times and spawn intervals scale by k.
 
@@ -567,6 +569,11 @@ Other materials (rain, spray, smoke, sparks, muzzle flash, decals) are `Standard
 | `--beam_yaw=deg` / `--beam_still` | beam start yaw / stop the rotation |
 | `--fire_at=s` | the rifle fires once at s seconds (capture presets) |
 | `--pre_trails` | wet smears stamped from the shore up to each `--spawn_at` point (for frozen captures, which never stamp their own) |
+| `--spawn_kind=captain` / `--spawn_hp=hp` | iteration 1: the FIRST `--spawn_at` is a Lantern Captain / starts at this hp |
+| `--impale_first` | a burning flare stuck in the first spawn (walking torch) |
+| `--aim_part=chest\|head\|lantern` / `--aim_flare` / `--aim_cask=i` | `--aim` target: part of the first spawn / the `--place_flare` flare / oil cask i |
+| `--light_braziers` / `--overdrive` / `--toll=n` | all braziers lit / beam overdrive from frame 0 / the buoy nearest the view tolls n strokes |
+| `--shove_at=s` | one scripted rifle-butt shove at s seconds |
 
 Explicit args override preset defaults. Unknown args are ignored.
 
@@ -580,26 +587,26 @@ to 0.001. Each key is added with its system, and a missing path reads as `null` 
 physics_frames:int  shot:str  seed:int
 time:      { night_t, night_len, u, dawn_progress, phase:"night|dawn|won|dead" }
 storm:     { intensity, progress, wind_speed, wind:[x,z], fog_density, mist_density,
-             depth_fog_density, wave_scale, rain_ratio, spray_ratio, lightning_count:int,
-             flash_active:bool, glow_threshold, exposure }
+			 depth_fog_density, wave_scale, rain_ratio, spray_ratio, lightning_count:int,
+			 flash_active:bool, glow_threshold, exposure }
 ocean:     { wave_time, steepness_sum, height_at_origin }
 player:    { pos:[x,y,z], yaw_deg, pitch_deg, speed (horizontal m/s), on_floor, sprinting,
-             hp:int, max_hp:int, alive, invuln, in_light, inside_lighthouse }
+			 hp:int, max_hp:int, alive, invuln, in_light, inside_lighthouse }
 camera:    { fov, bob_offset, recoil_pitch }
 weapon:    { current:"rifle|flare", ads, rifle_mag:int, rifle_reserve:int, rifle_state,
-             shots_fired:int, hits_lit:int, hits_dark:int }
+			 shots_fired:int, hits_lit:int, hits_dark:int }
 flares:    { left:int, max:int, fired:int, active:int, drowned:int }
 enemies:   { alive:int, spawned:int, killed:int, killed_by_rifle:int, killed_by_light:int,
-             lit_count:int, revealed_count:int, mean_speed_lit, mean_speed_dark, nearest_dist,
-             reached_lighthouse:int,
-             list:[ {id:int, pos:[x,y,z], hp, lit:bool, speed, state:"emerging|gliding|dying"} ]  (≤16, by id) }
+			 lit_count:int, revealed_count:int, mean_speed_lit, mean_speed_dark, nearest_dist,
+			 reached_lighthouse:int,
+			 list:[ {id:int, pos:[x,y,z], hp, lit:bool, speed, state:"emerging|gliding|dying"} ]  (≤16, by id) }
 waves:     { index:int (0 before wave 1), total:int, state:"waiting|spawning|active|cleared|over", next_wave_t,
-             pending:int (spawns still queued), peak_alive:int (most living Drowned at once) }
+			 pending:int (spawns still queued), peak_alive:int (most living Drowned at once) }
 crate:     { stocked:bool, uses:int, refills:int }
 lighthouse:{ lamp_on:bool, guttering:bool, beam_yaw }
 fx:        { vignette, damage_vignette, grain }
 audio:     { wind_gain, rain_gain, surf_gain, rifle_cracks:int, kill_thuds:int, flare_hiss_active:bool, moans_played:int,
-             thunders:int, duck_db (current ambience duck, <= 0), buses:int }
+			 thunders:int, duck_db (current ambience duck, <= 0), buses:int }
 ```
 - `flash_active`: the lightning reveal window (0.6 s after a strike) is open.
 - `revealed_count`: Drowned lit by lightning right now.
@@ -622,6 +629,7 @@ audio:     { wind_gain, rain_gain, surf_gain, rifle_cracks:int, kill_thuds:int, 
 | `dawn` | `--night_t=320 --no_waves --player_at=-6,-10 --look=270,2` | cold sunrise from +X, fog lifted, calmer sea, no rain, nothing warm except the lamp |
 | `dawn_sink` | `--night_t=309 --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --spawn_at=-3,16;4,20;-8,26;9,30` | the living Drowned sink and dissolve over 3 s as the storm breaks (mid frame about 1/3 sunk, last frame about 2/3) |
 | `dawn_card` | `--night_t=319 --no_waves --player_at=-6,-10 --look=270,2`, captured with **120 frames** (the clock hits `won` at 1 s, the card is full at 3 s) | the "Dawn." card: small serif, about 60% opacity, centred, over the cold sunrise; nothing else on screen |
+| `wounded_dark` `captain` `torch` `flare_burst` `brazier` `bells` `overdrive` `shove` | iteration 1, see `ShotPresets` | wound smolder in the dark, Lantern Captain silhouette + lantern, walking torch lighting its pack, flare burst, lit brazier + cask, tolling buoy, beam overdrive, rifle-butt shove |
 | `drowned_close` | `--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --pre_trails --place_flare=18 --spawn_at=0.5,11;-3,16` | cloth flutter, tattered hem, faint pale face, silhouette against the flare glow, wet trail, drips |
 
 ---
@@ -871,14 +879,14 @@ Every milestone follows the CLAUDE.md workflow:
   - `smoke`, `move` and `escalation` (M1 args) pass.
   - `calm`, `storm_peak`, `lightning` and `dawn` capture without CAPTURE WARN. The art-director has no unresolved top-3 issue, or 3 rounds are done.
   - Visual checks:
-    - (a) The horizon line is readable in `calm` and `storm_peak`.
-    - (b) No pure-black area larger than 5% of the frame.
-    - (c) Crest foam is visible in `storm_peak`.
-    - (d) The warm beam shaft shows in the fog in `calm`.
-    - (e) The lamp and beam are the only warm pixels.
-    - (f) `dawn` has no warm/gold hue and no rain, and the fog has visibly lifted.
-    - (g) Rain is visibly angled.
-    - (h) The `lightning` mid frame lights the whole island, with no bloom on foam.
+	- (a) The horizon line is readable in `calm` and `storm_peak`.
+	- (b) No pure-black area larger than 5% of the frame.
+	- (c) Crest foam is visible in `storm_peak`.
+	- (d) The warm beam shaft shows in the fog in `calm`.
+	- (e) The lamp and beam are the only warm pixels.
+	- (f) `dawn` has no warm/gold hue and no rain, and the fog has visibly lifted.
+	- (g) Rain is visibly angled.
+	- (h) The `lightning` mid frame lights the whole island, with no bloom on foam.
 
 ### M2: weapons, light, resupply
 - **Build:**
@@ -892,11 +900,11 @@ Every milestone follows the CLAUDE.md workflow:
   - `smoke`, `move`, `rifle`, `flare_fire` and `crate` (M2 args) pass.
   - `flare_fight` captures, with or without enemies; the Drowned are allowed to be missing until M3.
   - Visual checks:
-    - (a) The flare is the warmest and brightest thing in the frame and visibly lights the fog volume.
-    - (b) The flare casts shadows from rocks.
-    - (c) The muzzle flash shows on the mid frame.
-    - (d) The viewmodel reads as a weathered wood-and-iron rifle, not a toy (no flat colours, visible texture wear).
-    - (e) Sway and bob show between the mid and last frames.
+	- (a) The flare is the warmest and brightest thing in the frame and visibly lights the fog volume.
+	- (b) The flare casts shadows from rocks.
+	- (c) The muzzle flash shows on the mid frame.
+	- (d) The viewmodel reads as a weathered wood-and-iron rifle, not a toy (no flat colours, visible texture wear).
+	- (e) Sway and bob show between the mid and last frames.
 
 ### M3: the Drowned
 - **Build:**
@@ -913,11 +921,11 @@ Every milestone follows the CLAUDE.md workflow:
   - All earlier plans pass, plus `rifle_dark`, `rifle_lit`, `flare_light`, `beam`, `lightning`, `damage_death` and `lighthouse_reach`.
   - `flare_fight`, `lightning` and `drowned_close` pass the art-director.
   - Visual checks:
-    - (a) The Drowned read as dark tattered silhouettes in the fog: shape, not detail.
-    - (b) The hem visibly flutters and trails.
-    - (c) The face is faint and only readable when lit.
-    - (d) No emission, rim or outline on enemies, except the ember "searing" glow while an enemy stands in light (cracks + rim on hood/shoulders, warm face and eyes, steam); it must never look like a light source on the ground.
-    - (e) Wet trails read on the rock in `drowned_close`.
+	- (a) The Drowned read as dark tattered silhouettes in the fog: shape, not detail.
+	- (b) The hem visibly flutters and trails.
+	- (c) The face is faint and only readable when lit.
+	- (d) No emission, rim or outline on enemies, except the ember "searing" glow while an enemy stands in light (cracks + rim on hood/shoulders, warm face and eyes, steam); it must never look like a light source on the ground.
+	- (e) Wet trails read on the rock in `drowned_close`.
 
 ### M4: waves, escalation, dawn
 - **Build:**
@@ -937,7 +945,8 @@ Every milestone follows the CLAUDE.md workflow:
 Grounded painterly realism, a moody film still, not a game demo. References: Turner storm
 seascapes, "The Lighthouse" (Eggers), Dunkirk sea scenes, Faroe Islands at dusk.
 Palette: slate blue-grey sea, ash and bruise-purple sky, wet black rock, white foam. The ONLY
-warm colours are flares, muzzle flash and the lighthouse lamp.
+warm colours are flares, muzzle flash and the lighthouse lamp, plus fire the player has set from them
+(braziers, oil pools, bursts, burning Drowned) and the faint ember seams of a wounded Drowned (iteration 1).
 Must: Poly Haven stormy HDRI for sky + reflections; Gerstner ocean shader with crest foam,
 Fresnel, depth absorption; volumetric fog + low noisy FogVolumes; AgX, low exposure, glow only
 on flares and lamp; angled rain, sea spray, whole-scene lightning flashes; gun sway, camera bob,
@@ -1113,3 +1122,15 @@ plus a sling follow-up, all re-checked by eye.
 - **ADS** looks over the open iron sights: `ads_pos = (0, -SIGHT_Y, -EYE_Z)` = eye at (0, 0.074, 0.52) in rifle space, level with the front sight tip, well behind the bolt. The rifle's kick-back is scaled to 0.2 in ADS (`kick_back_ads_scale`) and walk bob to x0.15 (`bob_ads_scale`). `PlayerCamera.near = 0.01`.
 - **Reticle** (`src/fx/reticle.gd`, owned by PostFx): hip = one 2 px ivory dot at 0.28 alpha, nothing else; ADS = no 2D reticle at all (the 3D front sight tip is the mark). Hit markers (golden X-ticks / slate-blue ring) are the only other 2D feedback. Presets `ads_aim`, `ads_close`, `hit_lit`, `hit_dark`, `drowned_close`, `flare_fight` show it.
 - `rifle_dark.json` / `rifle_lit.json` also expect `fx.hit_markers.dark|kill`, `audio.deflects`.
+
+### Iteration 1 (`/iterate`, see DESIGN_LOG.md): TTK, wound readability, shove, fire synergy, captains, bells, island props
+- **TTK:** dark body hit 50 (2 shots); headshot = kill in any light; light still one-shots. Wounded (hp <= 50%) Drowned lean +10 deg, glide x0.85 and smolder: ember seams on hood/shoulders (`smolder_amount`), 6 unshaded embers, a 3D crackle loop. No UI bars.
+- **Shove (F/V):** 2.7 m, 65 deg half-cone, up to 3 targets, 3.4 m knockback over 0.3 s, 0.9 s stagger (no contact damage while staggered), 20 dmg, 0.7 s cooldown, usable mid bolt-cycle/reload (`WeaponHolder`).
+- **Fire rule (`FireSystem`):** flame is a physical object and a rifle round that hits flame detonates it. A flying flare that passes through a Drowned (`HitGeo` cylinder) impales it: 25 dmg, it burns (8 dps + light dps), ignores the light slowdown and lights its pack (torch GameLight r 6). A rifle round on a burning flare / oil cask / captain's lantern = burst: r 6, 60 dmg, 2 m knock, sets alight, 1.2 s glare (r 20), chains to burnables after 0.15 s. Casks also leave a 12 s oil pool (light r 9, ignites what glides through r 4).
+- **LightField** now also takes `GameLight` sources (braziers, oil pools, burning Drowned, burst glare). Only the beam and active flares cast shadows; every new light has `shadow_enabled = false`.
+- **Lantern Captain:** first spawn of waves 3-6 (total stays 49): 1.2x, 200 hp, x0.85 speed, Poly Haven `Lantern_01` on a hook (shootable, r 0.3); its lantern bursting does 120 to it. Drowned within 10 m of a living captain glide x1.15; when it dies they falter (x0.7 for 3 s).
+- **Bell buoys:** 6 at r 55. Wave sectors are pre-picked by their own RNG (the GameRng draw is kept so other seeded events stay put); `bell_lead` 6 s (x k) before a wave the nearest buoy tolls once per wave number.
+- **Island props:** 4 braziers (r ~25; lit by a resting burning flare within 2.5 m, a burst or a burning Drowned; 60 s, light r 11, 12 dps; refuelled each wave), 6 oil casks (Poly Haven `wine_barrel_01`; restocked each wave), beam winch behind the tower (hold E 1.2 s: 10 s overdrive, pitch -24, 10 deg cone, x2 dps, follows the view; 1 charge per wave).
+- **Sandbox F1-F4** (`Sandbox`, not in `--shot` presets): F1 captain + wounded + fresh Drowned 10 m ahead; F2 burning flare at the aim point + full ammo; F3 god toggle + full HP; F4 next wave (bell tolls) or a lightning strike.
+- **Tests:** `tools/sim.sh --all` runs `tests/suite.txt` (the 14 baselines + 12 new plans; `rifle_dark_live` now expects hp 50).
+- **Iteration 1 art leftovers (after 3 rounds):** the bells read only marginally, as a small fog-free marker lamp on a 1.6x buoy at 47 m. The shove stock is large and slightly over-lit. Flare smoke tints mauve under a burst for about 0.5 s. The overdrive beam core is near-clipped end-on.

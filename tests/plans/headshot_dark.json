@@ -1,0 +1,1 @@
+[{"f": 20, "mouse_button": "left", "hold": 3}, {"f": 26, "expect": "weapon.hits_head==1"}]

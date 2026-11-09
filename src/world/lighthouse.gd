@@ -38,6 +38,15 @@ const STONE_DIR: String = "res://assets/textures/stone_block_wall/"
 @export var beam_turn_speed_deg: float = 25.0
 @export var gutter_time: float = 3.0
 @export var gutter_level: float = 0.15
+@export_group("Beam overdrive (winch)")
+@export var overdrive_time: float = 10.0
+@export var overdrive_pitch_deg: float = -24.0   ## lands the beam about 46 m out instead of ~96 m
+@export var overdrive_angle_deg: float = 10.0
+@export var overdrive_dps_mult: float = 2.0      ## beam_dps 20 -> 40
+@export var overdrive_energy_mult: float = 1.6
+@export var overdrive_fog_mult: float = 0.4     ## the lowered beam is seen end-on from the tower: less fog glare
+@export var overdrive_follow_deg: float = 140.0  ## deg/s the beam swings after the operator's view
+@export var overdrive_ease_time: float = 0.6     ## s to lower / raise the beam
 
 var beam: SpotLight3D
 var crate: AmmoCrate
@@ -48,6 +57,10 @@ var _beam_pivot: Node3D
 var _beam_yaw_deg: float = 0.0
 var _gutter_left: float = 0.0
 var _lamp_mat: StandardMaterial3D
+var _overdrive_left: float = 0.0
+var _overdrive_amt: float = 0.0        ## 0..1 eased
+var _operator: Player
+var overdrives: int = 0
 
 
 func _ready() -> void:
@@ -98,16 +111,29 @@ func _ready() -> void:
 	add_child(crate)
 
 
+func _physics_process(delta: float) -> void:
+	_overdrive_left = maxf(0.0, _overdrive_left - delta)
+
+
 func _process(delta: float) -> void:
-	if not beam_still:
+	_overdrive_amt = move_toward(_overdrive_amt, 1.0 if _overdrive_left > 0.0 else 0.0, delta / maxf(overdrive_ease_time, 0.01))
+	if _overdrive_left > 0.0 and _operator != null:
+		# Overdrive: the keeper cranks the lens round to wherever they look.
+		var want: float = _operator.yaw_deg()
+		var diff: float = wrapf(want - _beam_yaw_deg, -180.0, 180.0)
+		_beam_yaw_deg = fposmod(_beam_yaw_deg + clampf(diff, -overdrive_follow_deg * delta, overdrive_follow_deg * delta), 360.0)
+		_beam_pivot.rotation_degrees.y = _beam_yaw_deg
+	elif not beam_still:
 		_beam_yaw_deg = fposmod(_beam_yaw_deg + beam_turn_speed_deg * delta, 360.0)
 		_beam_pivot.rotation_degrees.y = _beam_yaw_deg
-	var level: float = 1.0
+	beam.rotation_degrees.x = lerpf(beam_pitch_deg, overdrive_pitch_deg, _overdrive_amt)
+	beam.spot_angle = lerpf(beam_angle_deg, overdrive_angle_deg, _overdrive_amt)
+	var level: float = lerpf(1.0, overdrive_energy_mult, _overdrive_amt)
 	if _gutter_left > 0.0:
 		_gutter_left -= delta
-		level = gutter_level * (0.6 + 0.4 * sin(_gutter_left * 37.0))
+		level *= gutter_level * (0.6 + 0.4 * sin(_gutter_left * 37.0))
 	beam.light_energy = beam_energy * level
-	beam.light_volumetric_fog_energy = beam_fog_energy * level
+	beam.light_volumetric_fog_energy = beam_fog_energy * level * lerpf(1.0, overdrive_fog_mult / overdrive_energy_mult, _overdrive_amt)
 	lamp_light.light_energy = lamp_light_energy * level
 	_lamp_mat.emission_energy_multiplier = lamp_emission_energy * level
 
@@ -120,6 +146,21 @@ func set_beam_yaw(deg: float) -> void:
 
 func beam_yaw() -> float:
 	return _beam_yaw_deg
+
+
+## Winch: for overdrive_time seconds the beam drops, widens, burns twice as hot and follows `operator`'s view.
+func start_overdrive(operator: Player) -> void:
+	_operator = operator
+	_overdrive_left = overdrive_time
+	overdrives += 1
+
+
+func overdrive_left() -> float:
+	return _overdrive_left
+
+
+func beam_dps_mult() -> float:
+	return overdrive_dps_mult if _overdrive_left > 0.0 else 1.0
 
 
 func is_guttering() -> bool:

@@ -16,6 +16,8 @@ extends Node3D
 @export var occlusion_mask: int = 1  ## physics layer 1 (world)
 
 var flares: Array[Flare] = []
+## Other gameplay lights (braziers, oil fires, burning Drowned, burst glare). See GameLight.
+var sources: Array[GameLight] = []
 var lighthouse: Lighthouse
 var player: Player
 
@@ -36,6 +38,15 @@ func register_flare(f: Flare) -> void:
 
 func unregister_flare(f: Flare) -> void:
 	flares.erase(f)
+
+
+func register_source(l: GameLight) -> void:
+	if not sources.has(l):
+		sources.append(l)
+
+
+func unregister_source(l: GameLight) -> void:
+	sources.erase(l)
 
 
 ## Hooked to StormWeather.lightning_struck.
@@ -70,10 +81,19 @@ func query(pos: Vector3) -> Dictionary:
 		total += c
 		dps = maxf(dps, flare_dps)
 		shootable = true
+	for l: GameLight in sources:
+		var c: float = l.contribution(pos)
+		if c <= 0.0:
+			continue
+		if l.occludable and _occluded(pos + Vector3(0.0, flare_ray_lift, 0.0), l.origin()):
+			continue
+		total += c
+		dps = maxf(dps, l.dps)
+		shootable = true
 	if lighthouse != null and lighthouse.beam != null and not lighthouse.is_guttering():
 		if _in_beam(pos) and not _occluded(pos, lighthouse.beam.global_position):
 			total += 1.0
-			dps = maxf(dps, beam_dps)
+			dps = maxf(dps, beam_dps * lighthouse.beam_dps_mult())
 			shootable = true
 	var lit: bool = total >= lit_threshold
 	return {"lit": lit, "dps": dps if lit else 0.0, "shootable": shootable and lit}

@@ -22,6 +22,12 @@ static func ensure() -> void:
 	_key("restart", KEY_ENTER)
 	_key("screenshot", KEY_F12)
 	_key("screenshot", KEY_P)
+	_key("melee", KEY_F)            # rifle-butt shove
+	_key("melee", KEY_V)
+	_key("dev_spawn", KEY_F1)       # live sandbox (normal play only, see Sandbox)
+	_key("dev_flare", KEY_F2)
+	_key("dev_god", KEY_F3)
+	_key("dev_wave", KEY_F4)
 
 
 static func _add_action(action: StringName) -> void:

@@ -22,6 +22,13 @@ extends Node3D
 @export var deflect_db: float = -5.0
 @export var moan_db: float = -2.0
 @export var moan_variants: int = 4
+@export var butt_db: float = -3.0
+@export var whoosh_db: float = -12.0
+@export var bell_db: float = 2.0
+@export var bell_unit_size: float = 30.0     ## the bells carry across the water
+@export var bell_max_distance: float = 260.0
+@export var whoomph_db: float = 0.0
+@export var crackle_unit_size: float = 3.0
 @export_group("Mix")
 @export var ambience_bus_db: float = 0.0
 @export var weapons_bus_db: float = -1.0
@@ -43,6 +50,9 @@ var hiss_active: int = 0
 var kill_thuds: int = 0
 var deflects: int = 0
 var moans_played: int = 0
+var shove_hits: int = 0
+var bells_rung: int = 0
+var whoomphs: int = 0
 var duck_db: float = 0.0          ## current ambience duck (<= 0), for telemetry
 
 var _duck_target: float = 0.0
@@ -62,6 +72,13 @@ var _thud_stream: AudioStreamWAV
 var _deflect_stream: AudioStreamWAV
 var _deflect_pool: Array[AudioStreamPlayer] = []
 var _moan_streams: Array[AudioStreamWAV] = []
+var _crackle_stream: AudioStreamWAV
+var _butt_stream: AudioStreamWAV
+var _whoosh_stream: AudioStreamWAV
+var _bell_streams: Array[AudioStreamWAV] = []
+var _whoomph_stream: AudioStreamWAV
+var _melee_pool: Array[AudioStreamPlayer] = []
+var _whoosh: AudioStreamPlayer
 
 
 const BUS_AMBIENCE: String = "Ambience"
@@ -139,6 +156,16 @@ func _ready() -> void:
 	_deflect_stream = synth.dark_deflect()
 	for i: int in 2:
 		_deflect_pool.append(_oneshot2d("Deflect%d" % i, _deflect_stream, deflect_db))
+	# Iteration 1 sounds (synthesized after the original set, so those keep their exact noise).
+	_crackle_stream = synth.ember_crackle()
+	_butt_stream = synth.butt_strike()
+	_whoosh_stream = synth.swing_whoosh()
+	for f0: float in [196.0, 233.0, 262.0]:
+		_bell_streams.append(synth.sea_bell(f0))
+	_whoomph_stream = synth.fire_whoomph()
+	for i: int in 2:
+		_melee_pool.append(_oneshot2d("Melee%d" % i, _butt_stream, butt_db))
+	_whoosh = _oneshot2d("Whoosh", _whoosh_stream, whoosh_db)
 	_wind.play()
 	_rain.play()
 	for i: int in _surf.size():
@@ -257,6 +284,41 @@ func _oneshot3d(stream: AudioStream, pos: Vector3, unit: float, db: float, max_d
 	p.play()
 
 
+## Looping ember crackle parented to a smoldering / burning Drowned (3D, short range). The owner sets volume.
+func make_crackle(parent: Node3D) -> AudioStreamPlayer3D:
+	var p: AudioStreamPlayer3D = AudioStreamPlayer3D.new()
+	p.name = "Crackle"
+	p.stream = _crackle_stream
+	p.unit_size = crackle_unit_size
+	p.max_distance = 40.0
+	p.bus = BUS_VOICES
+	parent.add_child(p)
+	p.play(fposmod(absf(parent.global_position.x * 1.7 + parent.global_position.z), 2.5))  # no GameRng: keeps wave RNG stable
+	return p
+
+
+## Rifle-butt shove: a wooden knock when it connects, an air whoosh when it does not (2D, it is the player's).
+func play_shove(connected: bool) -> void:
+	if connected:
+		shove_hits += 1
+		_play_pooled(_melee_pool, _butt_stream)
+	else:
+		_whoosh.play()
+
+
+## A sea-bell buoy tolls (3D, carries far over the water). `variant` picks one of three pitches.
+func play_bell(pos: Vector3, variant: int) -> void:
+	bells_rung += 1
+	_oneshot3d(_bell_streams[posmod(variant, _bell_streams.size())], pos, bell_unit_size, bell_db, bell_max_distance, BUS_AMBIENCE)
+
+
+## Oil / magnesium fire burst (3D).
+func play_whoomph(pos: Vector3) -> void:
+	whoomphs += 1
+	duck(crack_duck_db * 0.6)
+	_oneshot3d(_whoomph_stream, pos, 12.0, whoomph_db, 150.0)
+
+
 func set_storm(wind_speed: float, rain_ratio: float, wave_scale: float) -> void:
 	wind_gain = lerpf(wind_db.x, wind_db.y, clampf(inverse_lerp(wind_range.x, wind_range.y, wind_speed), 0.0, 1.0))
 	rain_gain = lerpf(rain_db.x, rain_db.y, clampf(rain_ratio, 0.0, 1.0)) if rain_ratio > 0.01 else mute_db
@@ -308,6 +370,9 @@ func telemetry() -> Dictionary:
 		"deflects": deflects,
 		"flare_hiss_active": hiss_active > 0,
 		"moans_played": moans_played,
+		"shove_hits": shove_hits,
+		"bells": bells_rung,
+		"whoomphs": whoomphs,
 		"thunders": thunders_played,
 		"duck_db": snappedf(duck_db, 0.01),
 		"buses": AudioServer.bus_count,

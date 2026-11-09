@@ -26,6 +26,19 @@ signal ammo_changed
 @export var fill_energy: float = 1.4
 @export var fill_range: float = 2.5
 @export var sprint_tilt_deg: Vector3 = Vector3(-8.0, 22.0, -10.0)
+@export_group("Rifle-butt shove (F / V)")
+@export var shove_range: float = 2.7          ## metres from the player (XZ) to a Drowned's centre
+@export var shove_cone_deg: float = 65.0      ## half-angle in front of the view
+@export var shove_knock: float = 3.4          ## knockback distance (m)
+@export var shove_stagger: float = 0.9        ## s the Drowned stands still and can't touch you
+@export var shove_damage: float = 20.0        ## enough to make it smolder (a wound), never a kill on its own at full hp
+@export var shove_cooldown: float = 0.7
+@export var shove_max_targets: int = 3
+@export var shove_out_time: float = 0.09      ## pose: snap out...
+@export var shove_back_time: float = 0.34     ## ...and recover
+@export var shove_trauma: float = 0.2
+@export var shove_pos: Vector3 = Vector3(-0.07, 0.06, -0.34)   ## viewmodel offset at full extension
+@export var shove_rot_deg: Vector3 = Vector3(-14.0, -46.0, 24.0) ## turns the stock forward into view
 
 ## "rifle" or "flare"
 var current: String = "rifle"
@@ -54,12 +67,22 @@ var _fire_latch: bool = false
 var _reload_latch: bool = false
 var _switch_latch: String = ""
 var _scripted_done: bool = false
+var _melee_latch: bool = false
+var _shove_cd: float = 0.0
+var _shove_t: float = -1.0          ## seconds since the last shove (pose); < 0 = idle
+var _enemies: Enemies
+## --shove_at debug arg (seconds); < 0 disables.
+var shove_at: float = -1.0
+var _scripted_shove_done: bool = false
+var shoves: int = 0
+var shove_hits: int = 0
 
 
 func setup(player: Player, camera: PlayerCamera, projectiles: Node3D, ocean: Ocean, field: LightField, audio: Soundscape, weather: StormWeather, enemies: Enemies) -> void:
 	_player = player
 	_camera = camera
 	_audio = audio
+	_enemies = enemies
 	rifle = Rifle.new()
 	rifle.name = "Rifle"
 	rifle.setup(camera, player, field, audio, enemies)
@@ -109,6 +132,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_switch_latch = "flare"
 	elif event.is_action_pressed("weapon_toggle"):
 		_switch_latch = "flare" if current == "rifle" else "rifle"
+	elif event.is_action_pressed("melee"):
+		_melee_latch = true
 
 
 func _physics_process(delta: float) -> void:
@@ -121,6 +146,16 @@ func _physics_process(delta: float) -> void:
 	_reload_latch = false
 	var want_switch: String = _switch_latch
 	_switch_latch = ""
+	var want_shove: bool = _melee_latch
+	_melee_latch = false
+	_shove_cd = maxf(0.0, _shove_cd - delta)
+	if _shove_t >= 0.0:
+		_shove_t += delta
+		if _shove_t > shove_out_time + shove_back_time:
+			_shove_t = -1.0
+	if shove_at >= 0.0 and not _scripted_shove_done and _t >= shove_at:
+		_scripted_shove_done = true
+		want_shove = true
 	if not alive:
 		ads = false
 		_camera.ads = false
@@ -135,7 +170,11 @@ func _physics_process(delta: float) -> void:
 		_start_switch(want_switch)
 
 	var ready_to_act: bool = _switch_left <= 0.0
-	ads = ready_to_act and current == "rifle" and not sprinting and (force_ads or (Input.is_action_pressed("aim") and not _player.input_locked))
+	# The shove works mid bolt-cycle and mid reload (that is the point); it does not interrupt either.
+	if want_shove and ready_to_act and _shove_cd <= 0.0:
+		_do_shove()
+	var shoving: bool = _shove_t >= 0.0
+	ads = ready_to_act and not shoving and current == "rifle" and not sprinting and (force_ads or (Input.is_action_pressed("aim") and not _player.input_locked))
 	_camera.ads = ads
 	if ready_to_act and not sprinting:
 		if current == "rifle":
@@ -147,6 +186,54 @@ func _physics_process(delta: float) -> void:
 			flare_gun.try_fire()
 	elif ready_to_act and sprinting and current == "rifle" and want_reload:
 		pass  # no reload starts while sprinting
+
+
+## Rifle-butt shove: every living Drowned within shove_range in the front cone (nearest first, up to
+## shove_max_targets) is knocked back, staggered (can't touch you) and wounded a little.
+func _do_shove() -> void:
+	shoves += 1
+	_shove_cd = shove_cooldown
+	_shove_t = 0.0
+	_camera.add_trauma(shove_trauma)
+	_camera.add_recoil(-1.2, 0.0)
+	var connected: int = 0
+	if _enemies != null:
+		var fwd: Vector3 = -_camera.global_transform.basis.z
+		var flat_fwd: Vector2 = Vector2(fwd.x, fwd.z).normalized()
+		var me: Vector3 = _player.global_position
+		var cands: Array[Drowned] = []
+		for d: Drowned in _enemies.living():
+			var to: Vector2 = Vector2(d.global_position.x - me.x, d.global_position.z - me.z)
+			if to.length() > shove_range:
+				continue
+			if to.length() > 0.2 and absf(rad_to_deg(flat_fwd.angle_to(to.normalized()))) > shove_cone_deg:
+				continue
+			cands.append(d)
+		cands.sort_custom(func(a: Drowned, b: Drowned) -> bool:
+			return a.global_position.distance_squared_to(me) < b.global_position.distance_squared_to(me))
+		for d: Drowned in cands:
+			if connected >= shove_max_targets:
+				break
+			var away: Vector3 = d.global_position - me
+			away.y = 0.0
+			if away.length() < 0.05:
+				away = Vector3(flat_fwd.x, 0.0, flat_fwd.y)
+			d.shove(away.normalized(), shove_knock, shove_stagger, shove_damage)
+			HitFx.dark_mist(_enemies, d.chest_position(), away.normalized())
+			connected += 1
+	shove_hits += connected
+	if _audio != null:
+		_audio.play_shove(connected > 0)
+
+
+func shove_pose() -> float:
+	if _shove_t < 0.0:
+		return 0.0
+	if _shove_t < shove_out_time:
+		var k: float = _shove_t / maxf(shove_out_time, 0.001)
+		return 1.0 - (1.0 - k) * (1.0 - k)
+	var b: float = clampf((_shove_t - shove_out_time) / maxf(shove_back_time, 0.001), 0.0, 1.0)
+	return 1.0 - b * b * (3.0 - 2.0 * b)
 
 
 func _start_switch(target: String) -> void:
@@ -170,6 +257,15 @@ func _show(which: String) -> void:
 func add_ammo(rounds: int, flares: int) -> void:
 	rifle.add_reserve(rounds)
 	flare_gun.add_flares(flares)
+
+
+## F2 sandbox: full magazine, full reserve, full flares.
+func refill_all() -> void:
+	rifle.mag = rifle.mag_size
+	if rifle.state == "empty":
+		rifle.state = "ready"
+	rifle.add_reserve(rifle.max_reserve)
+	flare_gun.add_flares(flare_gun.flares_max)
 
 
 func rifle_state() -> String:
@@ -224,8 +320,9 @@ func _process(delta: float) -> void:
 	else:
 		base = flare_hip_pos
 	var bob: Vector3 = _camera.bob_offset * bob_gain * lerpf(1.0, bob_ads_scale, _ads_amt)
-	var pos: Vector3 = base + bob + sprint_offset * _sprint_amt + Vector3(0.0, -0.32 * sp, 0.06 * sp)
-	var rot: Vector3 = Vector3(sway.x, sway.y + hip_yaw_deg * (1.0 - _ads_amt), 0.0) + sprint_tilt_deg * _sprint_amt + Vector3(-30.0 * sp, 0.0, 0.0)
+	var shove_k: float = shove_pose()
+	var pos: Vector3 = base + bob + sprint_offset * _sprint_amt + Vector3(0.0, -0.32 * sp, 0.06 * sp) + shove_pos * shove_k
+	var rot: Vector3 = Vector3(sway.x, sway.y + hip_yaw_deg * (1.0 - _ads_amt), 0.0) + sprint_tilt_deg * _sprint_amt + Vector3(-30.0 * sp, 0.0, 0.0) + shove_rot_deg * shove_k
 
 	rifle.ads_amount = _ads_amt
 	var active: Node3D = rifle if _shown == "rifle" else flare_gun
@@ -243,6 +340,10 @@ func telemetry() -> Dictionary:
 		"shots_fired": rifle.shots_fired,
 		"hits_lit": rifle.hits_lit,
 		"hits_dark": rifle.hits_dark,
+		"hits_head": rifle.hits_head,
+		"hits_gear": rifle.hits_gear,
+		"shoves": shoves,
+		"shove_hits": shove_hits,
 	}
 
 
@@ -253,4 +354,5 @@ func flares_telemetry(active_count: int) -> Dictionary:
 		"fired": flare_gun.fired,
 		"active": active_count,
 		"drowned": flare_gun.drowned,
+		"impaled": flare_gun.impaled,
 	}

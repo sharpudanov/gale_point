@@ -24,6 +24,16 @@ var beam_yaw: float = 0.0
 var beam_still: bool = false
 var fire_at: float = -1.0
 var pre_trails: bool = false         ## stamp wet trails behind each spawned Drowned (frozen captures)
+var spawn_kind: String = "drowned"   ## the FIRST --spawn_at entry is this kind ("captain")
+var spawn_hp: float = -1.0           ## < 0 = full; else the FIRST --spawn_at entry starts at this hp
+var impale_first: bool = false       ## a burning flare stuck in the first spawn (walking torch)
+var aim_part: String = "chest"       ## --aim target on the first spawn: chest | head | lantern
+var aim_flare: bool = false          ## aim at the --place_flare flare instead
+var light_braziers: bool = false
+var overdrive: bool = false          ## beam overdrive from frame 0 (operator = player)
+var shove_at: float = -1.0           ## scripted rifle-butt shove at t seconds
+var aim_cask: int = -1               ## >= 0: --aim at this oil cask instead
+var toll: int = 0                    ## > 0: the buoy nearest the view tolls this many strokes at boot
 
 
 static func parse(preset_defaults: Dictionary) -> DebugArgs:
@@ -75,6 +85,28 @@ static func parse(preset_defaults: Dictionary) -> DebugArgs:
 	v = get_v.call("fire_at")
 	if v != null:
 		d.fire_at = float(str(v))
+	v = get_v.call("spawn_kind")
+	if v != null:
+		d.spawn_kind = str(v)
+	v = get_v.call("spawn_hp")
+	if v != null:
+		d.spawn_hp = float(str(v))
+	d.impale_first = get_v.call("impale_first") != null
+	v = get_v.call("aim_part")
+	if v != null:
+		d.aim_part = str(v)
+	d.aim_flare = get_v.call("aim_flare") != null
+	d.light_braziers = get_v.call("light_braziers") != null
+	d.overdrive = get_v.call("overdrive") != null
+	v = get_v.call("shove_at")
+	if v != null:
+		d.shove_at = float(str(v))
+	v = get_v.call("aim_cask")
+	if v != null:
+		d.aim_cask = int(str(v))
+	v = get_v.call("toll")
+	if v != null:
+		d.toll = int(str(v))
 	return d
 
 

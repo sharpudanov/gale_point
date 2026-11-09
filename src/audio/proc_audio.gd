@@ -306,6 +306,116 @@ func moan(variant: int) -> AudioStreamWAV:
 	return _to_wav(out, n, false)
 
 
+## Ember crackle (wounded smolder / burning cloth): sparse sharp pops (~14/s) of highpassed noise over a faint
+## lowpassed hiss bed. A 3 s loop; the Drowned scales the volume with its wound.
+func ember_crackle(seconds: float = 3.0) -> AudioStreamWAV:
+	var n: int = int(seconds * RATE)
+	var total: int = n + int(LOOP_XFADE * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(total)
+	var pop_p: float = 14.0 / RATE
+	var pop: float = 0.0
+	var pop_decay: float = 0.99
+	var hp_lp: float = 0.0
+	var bed_lp: float = 0.0
+	var a_hp: float = _lp_coef(1500.0)
+	var a_bed: float = _lp_coef(700.0)
+	for i: int in total:
+		var w: float = _white()
+		if _rng.randf() < pop_p:
+			pop = _rng.randf_range(0.4, 1.0)
+			pop_decay = _rng.randf_range(0.985, 0.996)
+		pop *= pop_decay
+		hp_lp += a_hp * (w - hp_lp)
+		bed_lp += a_bed * (w - bed_lp)
+		out[i] = (w - hp_lp) * pop * 1.2 + bed_lp * 0.12
+	return _to_wav(out, n, true)
+
+
+## Rifle-butt strike: a hollow wooden knock (two short partials 180 / 740 Hz), a lowpassed cloth slap and a
+## 95 Hz body thump. 0.32 s.
+func butt_strike(seconds: float = 0.32) -> AudioStreamWAV:
+	var n: int = int(seconds * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	var slap_lp: float = 0.0
+	var a: float = _lp_coef(1200.0)
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var knock: float = sin(TAU * 180.0 * t) * exp(-t * 30.0) + sin(TAU * 740.0 * t + 0.4) * exp(-t * 70.0) * 0.5
+		var thump: float = sin(TAU * 95.0 * t) * exp(-t * 14.0)
+		slap_lp += a * (_white() - slap_lp)
+		var slap: float = slap_lp * 3.0 * exp(-t / 0.035)
+		out[i] = (knock * 0.7 + thump * 0.8 + slap * 0.6) * minf(1.0, t * 900.0) * clampf((seconds - t) / 0.05, 0.0, 1.0)
+	return _to_wav(out, n, false)
+
+
+## Air whoosh for a shove that hits nothing: bandpassed noise swelling and falling over 0.22 s.
+func swing_whoosh(seconds: float = 0.22) -> AudioStreamWAV:
+	var n: int = int(seconds * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	var band: Vector2 = Vector2.ZERO
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var u: float = t / seconds
+		var fc: float = lerpf(500.0, 1600.0, u)
+		var f: float = 2.0 * sin(PI * fc / RATE)
+		var high: float = _white() - band.x - 0.6 * band.y
+		band.y += f * high
+		band.x += f * band.y
+		out[i] = band.y * sin(PI * u)
+	return _to_wav(out, n, false)
+
+
+## Sea bell (buoys): a struck bronze bell, inharmonic partials (hum 0.5, prime 1, tierce 1.2, quint 1.5,
+## nominal 2, 2.6, 3.4 x f0) each with its own decay, plus a short clapper tick. `f0` Hz, 4.5 s.
+func sea_bell(f0: float = 220.0, seconds: float = 4.5) -> AudioStreamWAV:
+	var n: int = int(seconds * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	var ratios: PackedFloat32Array = PackedFloat32Array([0.5, 1.0, 1.19, 1.5, 2.0, 2.61, 3.42])
+	var gains: PackedFloat32Array = PackedFloat32Array([0.55, 1.0, 0.6, 0.35, 0.5, 0.25, 0.18])
+	var decays: PackedFloat32Array = PackedFloat32Array([0.45, 0.9, 1.3, 1.6, 1.9, 3.5, 5.0])
+	var tick_lp: float = 0.0
+	var a: float = _lp_coef(2500.0)
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var v: float = 0.0
+		for k: int in ratios.size():
+			v += sin(TAU * f0 * ratios[k] * t + float(k)) * gains[k] * exp(-t * decays[k])
+		tick_lp += a * (_white() - tick_lp)
+		v += tick_lp * 1.5 * exp(-t / 0.01)
+		out[i] = v * minf(1.0, t * 800.0) * clampf((seconds - t) / 0.3, 0.0, 1.0)
+	return _to_wav(out, n, false)
+
+
+## Fire whoomph (oil / magnesium burst): a low 45 -> 80 Hz swell under roaring lowpassed noise that opens
+## from 300 Hz to 2.5 kHz, with crackle on the tail. 1.4 s.
+func fire_whoomph(seconds: float = 1.4) -> AudioStreamWAV:
+	var n: int = int(seconds * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	var lp: float = 0.0
+	var lp2: float = 0.0
+	var phase: float = 0.0
+	var pop: float = 0.0
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var u: float = t / seconds
+		var env: float = minf(1.0, t / 0.06) * exp(-t * 2.2)
+		var a: float = _lp_coef(lerpf(300.0, 2500.0, minf(1.0, t / 0.15)) * (1.0 - 0.6 * u))
+		var w: float = _white()
+		lp += a * (w - lp)
+		lp2 += a * (lp - lp2)
+		phase += TAU * lerpf(45.0, 80.0, minf(1.0, t / 0.2)) / RATE
+		if _rng.randf() < 30.0 / RATE:
+			pop = _rng.randf_range(0.3, 0.8)
+		pop *= 0.992
+		out[i] = (lp2 * 2.2 + sin(phase) * 0.9 * exp(-t * 4.0) + w * pop * 0.5 * u) * env
+	return _to_wav(out, n, false)
+
+
 func _to_wav(src: PackedFloat32Array, n: int, loop: bool) -> AudioStreamWAV:
 	var data: PackedFloat32Array = src
 	if loop:

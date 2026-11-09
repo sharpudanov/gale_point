@@ -35,6 +35,8 @@ instance uniform float flutter_scale = 1.0;
 instance uniform vec3 drag_offset = vec3(0.0);   // model space: -velocity * 0.12
 instance uniform float lit_amount : hint_range(0.0, 1.0) = 0.0;      // 1 = searing in the light (shootable)
 instance uniform float damage_amount : hint_range(0.0, 1.0) = 0.0;   // 1 - hp / max_hp
+instance uniform float smolder_amount : hint_range(0.0, 2.0) = 0.0;  // wounded: embers in the cracks even in the dark
+instance uniform float burn_amount : hint_range(0.0, 1.0) = 0.0;     // on fire (impaled flare / oil): whole cloak chars
 
 void vertex() {
 	float w = pow(clamp(1.0 - UV.y, 0.0, 1.0), hem_weight_pow);
@@ -67,7 +69,7 @@ void fragment() {
 	SPECULAR = specular;
 	NORMAL_MAP = texture(detail_normal, duv).xyz;
 	NORMAL_MAP_DEPTH = detail_normal_depth;
-	if (lit_amount > 0.001) {
+	if (lit_amount > 0.001 || smolder_amount > 0.001 || burn_amount > 0.001) {
 		// Hood and shoulders (UV.y near 1) glow most; the hem only a little.
 		float upper = mix(0.25, 1.0, smoothstep(0.2, 0.8, UV.y));
 		float rim = pow(1.0 - clamp(abs(dot(normalize(NORMAL), normalize(VIEW))), 0.0, 1.0), rim_power);   // abs: the lathe winding flips NORMAL
@@ -77,6 +79,27 @@ void fragment() {
 		float crack = 1.0 - smoothstep(half_w * 0.4, half_w, abs(cn - 0.5));
 		float flicker = 0.85 + 0.15 * sin(TIME * 9.0 + time_offset * 3.0 + UV.y * 20.0);
 		float strength = rim * 0.7 + crack * mix(0.9, 2.2, damage_amount);
-		EMISSION = ember_color * ember_energy * strength * upper * flicker * lit_amount;
+		vec3 e = ember_color * ember_energy * strength * upper * flicker * lit_amount;
+		// Smolder (wounded, any light): only the cracks, with a ragged fast crackle; no rim, so it stays a
+		// wound and never reads as an outline.
+		float crackle = 0.55 + 0.45 * texture(tatter_tex, UV * vec2(2.0, 1.3) + vec2(TIME * 0.31 + time_offset, TIME * 0.17)).r;
+		crackle *= 0.8 + 0.2 * sin(TIME * 23.0 + time_offset * 5.0 + UV.x * 31.0);
+		// Thin fixed-width seams on hood and shoulders only (not the hem), so a wound reads as a few live
+		// embers in the folds rather than a sparkle over the whole cloak.
+		// Low-frequency noise stretched vertically: 3-5 long connected seams, not a grain pattern.
+		float sn = texture(tatter_tex, UV * vec2(1.6, 0.45) + vec2(0.41, 0.23)).r;
+		float seam = 1.0 - smoothstep(0.008, 0.02, abs(sn - 0.5));
+		float shoulders = smoothstep(0.45, 0.85, UV.y);
+		float pulse = 0.7 + 0.3 * sin(TIME * 1.9 + time_offset);   // ~0.3 Hz breathing glow
+		e += ember_color * ember_energy * 0.6 * seam * pulse * shoulders * smolder_amount;
+		// Burning (impaled flare / oil): the cracks blow wide open and the hem chars with crawling fire.
+		// Low-frequency only (the fine crack noise reads as glitter at range): broad charred seams and
+		// slow tongues of flame crawling up from the hem.
+		float burn_crack = 1.0 - smoothstep(0.03, 0.07, abs(sn - 0.5));
+		float flames = smoothstep(0.55, 0.8, texture(tatter_tex, UV * vec2(1.2, 0.6) + vec2(time_offset, -TIME * 0.35)).r);
+		float climb = mix(1.0, 0.35, UV.y);   // fire licks up from the hem; the hood chars
+		e += ember_color * ember_energy * (burn_crack * 0.6 + flames * 0.7 * climb) * pulse * burn_amount;
+		EMISSION = e;
+		ALBEDO *= 1.0 - 0.6 * burn_amount;   // charred
 	}
 }

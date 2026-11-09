@@ -1,11 +1,12 @@
 class_name Flare
-extends Node3D
+extends ShootableGear
 ## A burning flare (SPEC 4.6): ballistic flight with bounces, a 20 s burn curve (ignite -> steady ->
 ## sputter), a shadow-casting warm light, smoke, sparks, and a hiss. Registers with LightField while
 ## it burns. Falls into the sea -> "dud": bobs, hisses and dies over dud_time.
 
 signal sank        ## fell into the sea before landing
 signal burned_out
+signal impaled      ## struck a Drowned in flight and stuck in it
 
 @export var burn_time: float = 20.0
 @export var ignite_time: float = 0.5
@@ -16,6 +17,10 @@ signal burned_out
 @export var rest_speed: float = 0.5
 @export var dud_time: float = 1.5
 @export var sea_margin: float = 0.1
+@export_group("Impale / burst")
+@export var impale_radius: float = 0.5      ## body cylinder radius a flying flare must pass through (x Drowned scale)
+@export var impale_min_speed: float = 6.0   ## a rolling / resting flare does not impale
+@export var shot_radius: float = 0.3        ## a rifle round within this of a burning flare detonates it
 @export_group("Light")
 @export var light_color: Color = Color(1.0, 0.60, 0.36)
 @export var light_energy: float = 7.0
@@ -41,8 +46,12 @@ signal burned_out
 
 var velocity: Vector3 = Vector3.ZERO
 var age: float = 0.0
-## "flying", "resting", "dud", "out"
+## "flying", "resting", "impaled", "dud", "out"
 var state: String = "flying"
+var enemies: Enemies
+var fire: FireSystem
+var host: Drowned
+var _host_offset: Vector3 = Vector3.ZERO   ## in the host's local frame
 var burn: float = 0.0
 
 var _ocean: Ocean
@@ -100,7 +109,31 @@ func light_contribution(pos: Vector3, radius: float) -> float:
 
 
 func is_burning() -> bool:
-	return state == "flying" or state == "resting"
+	return state == "flying" or state == "resting" or state == "impaled"
+
+
+func ray_hit(from: Vector3, dir: Vector3) -> float:
+	if not is_burning() or burn < gameplay_min_burn or state == "impaled":
+		return -1.0
+	return HitGeo.ray_vs_sphere(from, dir, global_position, shot_radius)
+
+
+## A rifle round through a burning flare: magnesium burst. The flare is spent.
+func on_shot(_point: Vector3, _dir: Vector3) -> void:
+	if not is_burning():
+		return
+	if fire != null:
+		fire.burst(global_position, 1.0)
+	_finish()
+
+
+## The host died: fall off and keep burning where it lands.
+func drop_from_host() -> void:
+	if state != "impaled":
+		return
+	host = null
+	state = "flying"
+	velocity = Vector3(0.0, 0.5, 0.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -113,13 +146,18 @@ func _physics_process(delta: float) -> void:
 	match state:
 		"flying":
 			_fly(delta)
+		"impaled":
+			if host != null and is_instance_valid(host) and host.is_alive():
+				global_position = host.global_transform * _host_offset + host.body_offset()
+			else:
+				drop_from_host()
 		"dud":
 			_dud_left -= delta
 			var h: float = _ocean.get_height(global_position.x, global_position.z) if _ocean != null else global_position.y
 			global_position.y = h + 0.05 + 0.03 * sin(age * 7.0)
 			if _dud_left <= 0.0:
 				_finish()
-	if state == "flying" or state == "resting":
+	if state == "flying" or state == "resting" or state == "impaled":
 		if age >= burn_time:
 			_finish()
 	_update_burn()
@@ -136,6 +174,8 @@ func _fly(delta: float) -> void:
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var q: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, to, 1)
 	var hit: Dictionary = space.intersect_ray(q)
+	if _try_impale(from, to, hit):
+		return
 	if not hit.is_empty():
 		var n: Vector3 = hit["normal"]
 		global_position = (hit["position"] as Vector3) + n * core_radius
@@ -149,6 +189,48 @@ func _fly(delta: float) -> void:
 	global_position = to
 	if _ocean != null and to.y < _ocean.get_height(to.x, to.z) + sea_margin:
 		_become_dud()
+
+
+## Same deterministic body test as the rifle, along this frame's flight segment. The nearest Drowned the
+## segment passes through (before any world hit) is impaled: the flare sticks in its chest and rides along.
+func _try_impale(from: Vector3, to: Vector3, world_hit: Dictionary) -> bool:
+	if enemies == null or velocity.length() < impale_min_speed:
+		return false
+	var seg: Vector3 = to - from
+	var seg_len: float = seg.length()
+	if seg_len < 0.0001:
+		return false
+	var dir: Vector3 = seg / seg_len
+	var limit: float = seg_len if world_hit.is_empty() else from.distance_to(world_hit["position"] as Vector3)
+	var best: float = INF
+	var target: Drowned = null
+	for d: Drowned in enemies.living():
+		if d.state == "emerging":
+			continue
+		var sc: float = d.size_scale
+		var c: Vector3 = d.global_position + d.body_offset() + Vector3(0.0, 1.05 * sc, 0.0)
+		var t: float = HitGeo.ray_vs_cylinder(from, dir, c, impale_radius * sc, d.global_position.y + 0.2,
+			d.global_position.y + 2.1 * sc, limit)
+		if t >= 0.0 and t < best:
+			best = t
+			target = d
+	if target == null:
+		return false
+	attach_to(target, from + dir * best)
+	return true
+
+
+## Stick into `target` at world point `at` (clamped to the torso); it becomes a walking torch.
+func attach_to(target: Drowned, at: Vector3) -> void:
+	host = target
+	state = "impaled"
+	velocity = Vector3.ZERO
+	var local: Vector3 = target.global_transform.affine_inverse() * at
+	local.y = clampf(local.y, 0.9 * target.size_scale, 1.7 * target.size_scale)
+	_host_offset = Vector3(local.x * 0.4, local.y, local.z * 0.4)
+	global_position = target.global_transform * _host_offset
+	target.impale(self)
+	impaled.emit()
 
 
 func _become_dud() -> void:

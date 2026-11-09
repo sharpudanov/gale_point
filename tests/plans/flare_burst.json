@@ -1,0 +1,1 @@
+[{"f": 10, "mouse_button": "left", "hold": 3}, {"f": 14, "expect": "fire.bursts==1"}, {"f": 14, "expect": "weapon.hits_gear==1"}, {"f": 20, "expect": "fire.drowned_burning==2"}]

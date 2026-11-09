@@ -24,7 +24,11 @@ var projectiles: Node3D
 var soundscape: Soundscape
 var post_fx: PostFx
 
+## Screenshot hotkey output folder (gitignored via .captures/).
+@export var screenshot_dir: String = "res://.captures/screenshots"
+
 var _physics_frames: int = 0
+var _screenshot_busy: bool = false
 
 
 func _ready() -> void:
@@ -145,6 +149,37 @@ func _add(node: Node, n: String) -> Node:
 
 func _on_player_died() -> void:
 	clock.set_dead()
+
+
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("screenshot", false, true):
+		_take_screenshot()
+
+
+## F12 / P: save the finished frame as PNG and put it on the Windows clipboard.
+func _take_screenshot() -> void:
+	if _screenshot_busy or DisplayServer.get_name() == "headless":
+		return
+	_screenshot_busy = true
+	await RenderingServer.frame_post_draw
+	var img: Image = get_viewport().get_texture().get_image()
+	_screenshot_busy = false
+	if img == null or img.is_empty():
+		push_warning("screenshot: viewport image was empty")
+		return
+	var dir_abs: String = ProjectSettings.globalize_path(screenshot_dir)
+	DirAccess.make_dir_recursive_absolute(dir_abs)
+	var abs_path: String = dir_abs.path_join("shot_%d.png" % int(Time.get_unix_time_from_system()))
+	if img.save_png(abs_path) != OK:
+		push_warning("screenshot: could not write " + abs_path)
+		return
+	print("screenshot saved: ", abs_path)
+	if OS.get_name() == "Windows":
+		# Detached process: the clipboard copy never stalls the frame.
+		var ps_path: String = abs_path.replace("/", "\\").replace("'", "''")
+		OS.create_process("powershell.exe", ["-NoProfile", "-WindowStyle", "Hidden", "-Command",
+			"Add-Type -AssemblyName System.Windows.Forms,System.Drawing; "
+			+ "[System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('" + ps_path + "'))"])
 
 
 func _physics_process(_delta: float) -> void:

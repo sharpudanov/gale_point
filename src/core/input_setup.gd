@@ -20,6 +20,8 @@ static func ensure() -> void:
 	_mouse("weapon_toggle", MOUSE_BUTTON_WHEEL_DOWN)
 	_key("release_mouse", KEY_ESCAPE)
 	_key("restart", KEY_ENTER)
+	_key("screenshot", KEY_F12)
+	_key("screenshot", KEY_P)
 
 
 static func _add_action(action: StringName) -> void:

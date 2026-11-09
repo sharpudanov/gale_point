@@ -1,0 +1,17 @@
+[
+  {"f": 0,   "to": 10, "mouse_motion": [0, -10]},
+  {"f": 15,  "key": "2", "hold": 3},
+  {"f": 60,  "mouse_button": "left", "hold": 3},
+  {"f": 66,  "expect": "flares.left==2"},
+  {"f": 80,  "key": "1", "hold": 3},
+  {"f": 90,  "to": 100, "mouse_motion": [0, 10]},
+  {"f": 110, "key": "S", "hold": 110},
+  {"f": 230, "expect": "player.inside_lighthouse==true"},
+  {"f": 240, "key": "E", "hold": 3},
+  {"f": 246, "expect": "crate.uses==1"},
+  {"f": 246, "expect": "crate.stocked==false"},
+  {"f": 246, "expect": "flares.left==3"},
+  {"f": 246, "expect": "weapon.rifle_reserve==25"},
+  {"f": 270, "key": "E", "hold": 3},
+  {"f": 276, "expect": "crate.uses==1"}
+]

@@ -15,6 +15,9 @@ var island: Island
 var lighthouse: Lighthouse
 var weather: StormWeather
 var player: Player
+var weapons: WeaponHolder
+var light_field: LightField
+var projectiles: Node3D
 var soundscape: Soundscape
 var post_fx: PostFx
 
@@ -55,15 +58,29 @@ func _build() -> void:
 	weather.mood = mood
 	weather.forced_flash_at = args.flash_at
 
+	soundscape = _add(Soundscape.new(), "Soundscape") as Soundscape
+	weather.lightning_struck.connect(soundscape.on_lightning)
+	light_field = _add(LightField.new(), "LightField") as LightField
+	weather.lightning_struck.connect(light_field.on_lightning)
+	projectiles = _add(Node3D.new(), "Projectiles") as Node3D
+
 	player = _add(Player.new(), "Player") as Player
 	var start: Vector2 = args.player_at if args.has_player_at else Vector2(0.0, 6.0)
 	var look: Vector2 = args.look if args.has_look else Vector2(180.0, 0.0)
 	player.setup(island, start, look, args.god)
 	player.input_locked = ShotPresets.has_preset(shot)
 	weather.follow_target = player
+	light_field.setup(lighthouse, player)
+	player.crate = lighthouse.crate
 
-	soundscape = _add(Soundscape.new(), "Soundscape") as Soundscape
-	weather.lightning_struck.connect(soundscape.on_lightning)
+	weapons = WeaponHolder.new()
+	weapons.name = "WeaponHolder"
+	player.camera.add_child(weapons)
+	weapons.setup(player, player.camera, projectiles, ocean, light_field, soundscape, weather)
+	weapons.fire_at = args.fire_at
+	player.weapons = weapons
+	if args.place_flare >= 0.0:
+		_place_flare(args.place_flare)
 
 	# The director runs after the clock (tree order) and pushes into everything built above.
 	add_child(director)
@@ -72,7 +89,18 @@ func _build() -> void:
 
 	post_fx = _add(PostFx.new(), "PostFx") as PostFx
 	post_fx.player = player
+	post_fx.set_weapons(weapons)
 	player.died.connect(_on_player_died)
+
+
+## --place_flare=d: a burning flare (age 3 s) resting d m in front of the player; uses no ammo.
+func _place_flare(d: float) -> void:
+	var fwd: Vector3 = -player.global_transform.basis.z
+	fwd.y = 0.0
+	fwd = fwd.normalized()
+	var p: Vector3 = player.global_position + fwd * d
+	p.y = island.height_at(p.x, p.z) + 0.06
+	weapons.flare_gun.spawn_flare(p, Vector3.ZERO, 3.0)
 
 
 func _add(node: Node, n: String) -> Node:
@@ -137,6 +165,9 @@ func get_telemetry() -> Dictionary:
 		"bob_offset": _r(player.camera.bob_offset.y),
 		"recoil_pitch": _r(player.camera.recoil_pitch),
 	}
+	t["weapon"] = weapons.telemetry()
+	t["flares"] = weapons.flares_telemetry(light_field.flares.size())
+	t["crate"] = lighthouse.crate.telemetry()
 	t["lighthouse"] = {
 		"lamp_on": lighthouse.lamp_on,
 		"guttering": lighthouse.is_guttering(),

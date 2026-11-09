@@ -12,17 +12,29 @@ extends Node3D
 @export var thunder_db: float = -6.0
 @export var thunder_delay: Vector2 = Vector2(0.3, 2.0)
 @export var mute_db: float = -80.0
+@export var crack_db: float = 0.0
+@export var click_db: float = -8.0
+@export var launch_db: float = -2.0
+@export var hiss_db: float = -4.0
 
 var wind_gain: float = -80.0
 var rain_gain: float = -80.0
 var surf_gain: float = -80.0
 var thunders_played: int = 0
+var rifle_cracks: int = 0
+var hiss_active: int = 0
 
 var _wind: AudioStreamPlayer
 var _rain: AudioStreamPlayer
 var _surf: Array[AudioStreamPlayer3D] = []
 var _thunder: AudioStreamPlayer
 var _pending_thunder: Array[float] = []
+var _crack_pool: Array[AudioStreamPlayer] = []
+var _click_pool: Array[AudioStreamPlayer] = []
+var _bolt_stream: AudioStreamWAV
+var _reload_stream: AudioStreamWAV
+var _launch_stream: AudioStreamWAV
+var _hiss_stream: AudioStreamWAV
 
 
 func _ready() -> void:
@@ -45,6 +57,15 @@ func _ready() -> void:
 	_thunder.stream = synth.thunder()
 	_thunder.volume_db = thunder_db
 	add_child(_thunder)
+	var crack: AudioStreamWAV = synth.rifle_crack()
+	for i: int in 2:
+		_crack_pool.append(_oneshot2d("Crack%d" % i, crack, crack_db))
+	_bolt_stream = synth.bolt_clack()
+	_reload_stream = synth.reload_click()
+	for i: int in 2:
+		_click_pool.append(_oneshot2d("Click%d" % i, _bolt_stream, click_db))
+	_launch_stream = synth.flare_launch()
+	_hiss_stream = synth.flare_hiss()
 	_wind.play()
 	_rain.play()
 	for i: int in _surf.size():
@@ -58,6 +79,72 @@ func _player2d(n: String, stream: AudioStream) -> AudioStreamPlayer:
 	p.volume_db = mute_db
 	add_child(p)
 	return p
+
+
+func _oneshot2d(n: String, stream: AudioStream, db: float) -> AudioStreamPlayer:
+	var p: AudioStreamPlayer = AudioStreamPlayer.new()
+	p.name = n
+	p.stream = stream
+	p.volume_db = db
+	add_child(p)
+	return p
+
+
+func _play_pooled(pool: Array[AudioStreamPlayer], stream: AudioStream) -> void:
+	for p: AudioStreamPlayer in pool:
+		if not p.playing:
+			p.stream = stream
+			p.play()
+			return
+	pool[0].stream = stream
+	pool[0].play()
+
+
+## Rifle shot (2D, loud). Counted for tests: headless runs use the dummy audio driver.
+func play_rifle_crack() -> void:
+	rifle_cracks += 1
+	_play_pooled(_crack_pool, _crack_pool[0].stream)
+
+
+func play_bolt() -> void:
+	_play_pooled(_click_pool, _bolt_stream)
+
+
+func play_reload_click() -> void:
+	_play_pooled(_click_pool, _reload_stream)
+
+
+## Flare launch thump, 3D at the muzzle.
+func play_flare_launch(pos: Vector3) -> void:
+	var p: AudioStreamPlayer3D = AudioStreamPlayer3D.new()
+	p.stream = _launch_stream
+	p.unit_size = 6.0
+	p.volume_db = launch_db
+	p.finished.connect(p.queue_free)
+	add_child(p)
+	p.global_position = pos
+	p.play()
+
+
+## A looping flare hiss parented to the flare (3D, unit size 6). The Flare scales its volume.
+func make_hiss(parent: Node3D) -> AudioStreamPlayer3D:
+	var p: AudioStreamPlayer3D = AudioStreamPlayer3D.new()
+	p.name = "Hiss"
+	p.stream = _hiss_stream
+	p.unit_size = 6.0
+	p.max_distance = 120.0
+	p.volume_db = hiss_db
+	parent.add_child(p)
+	p.play(GameRng.randf() * 3.0)
+	return p
+
+
+func hiss_started() -> void:
+	hiss_active += 1
+
+
+func hiss_stopped() -> void:
+	hiss_active = maxi(0, hiss_active - 1)
 
 
 func set_storm(wind_speed: float, rain_ratio: float, wave_scale: float) -> void:
@@ -89,9 +176,9 @@ func telemetry() -> Dictionary:
 		"wind_gain": snappedf(wind_gain, 0.001),
 		"rain_gain": snappedf(rain_gain, 0.001),
 		"surf_gain": snappedf(surf_gain, 0.001),
-		"rifle_cracks": 0,
+		"rifle_cracks": rifle_cracks,
 		"kill_thuds": 0,
-		"flare_hiss_active": false,
+		"flare_hiss_active": hiss_active > 0,
 		"moans_played": 0,
 		"thunders": thunders_played,
 	}

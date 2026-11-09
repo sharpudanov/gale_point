@@ -13,3 +13,8 @@ All third-party assets are CC0 from Poly Haven, added only via the asset-fetcher
 | Boulder 01 | models | 1k | res://assets/models/boulder_01/ | https://polyhaven.com/a/boulder_01 | Rico Cilliers | CC0 | 2026-11-09 |
 | Rock 09 | models | 1k | res://assets/models/rock_09/ | https://polyhaven.com/a/rock_09 | Jenelle van Heerden | CC0 | 2026-11-09 |
 | Rock 07 | models | 1k | res://assets/models/rock_07/ | https://polyhaven.com/a/rock_07 | Jenelle van Heerden | CC0 | 2026-11-09 |
+| Rusty Metal 02 | textures | 1k | res://assets/textures/rusty_metal_02/ | https://polyhaven.com/a/rusty_metal_02 | Rob Tuytel | CC0 | 2026-11-09 |
+| Painted Metal Shutter | textures | 1k | res://assets/textures/painted_metal_shutter/ | https://polyhaven.com/a/painted_metal_shutter | Dario Barresi, Rico Cilliers, Charlotte Baglioni | CC0 | 2026-11-09 |
+| Weathered Planks | textures | 1k | res://assets/textures/weathered_planks/ | https://polyhaven.com/a/weathered_planks | Dario Barresi, Dimitrios Savva | CC0 | 2026-11-09 |
+| Dark Wood | textures | 1k | res://assets/textures/dark_wood/ | https://polyhaven.com/a/dark_wood | Dario Barresi, Dimitrios Savva, Rico Cilliers | CC0 | 2026-11-09 |
+| Wooden Crate 01 | models | 1k | res://assets/models/wooden_crate_01/ | https://polyhaven.com/a/wooden_crate_01 | James Ray Cock | CC0 | 2026-11-09 |

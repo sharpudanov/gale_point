@@ -1,7 +1,7 @@
 # Gale Point: Night Watch — Specification
 
 > Source of truth for design decisions. Code follows this file; change this file first.
-> Status: **M1 done** (island, sea, storm, walk). M2 next. All numbers are starting values: tune them through
+> Status: **M1 done** (island, sea, storm, walk). **M2 done** (weapons, light, resupply). M3 next. All numbers are starting values: tune them through
 > the listed `@export`s, then update this file when a value changes for good.
 
 ---
@@ -982,3 +982,39 @@ window can't move the camera.
 - Harness: on this machine `tools/capture.sh` sometimes stalls (the remaining frames are byte-identical copies). Check with `md5sum .captures/<p>/*.png | sort -u | wc -l` and re-run.
 - `tools/sim.sh` prints at most 80 lines (`SIM_MAX_LINES`). With `--every=60` on long runs the SIM_RESULT line falls off; check `.captures/sim/last.log` or the exit code.
 
+
+### M2: chosen asset slugs (Poly Haven, CC0; also in `ASSETS.md`)
+| # | Slug | Res | Used by |
+|---|---|---|---|
+| 6 | `rusty_metal_02` | 1k | rifle metal, crate straps |
+| 7 | `painted_metal_shutter` | 1k | flare gun paint |
+| 8 | `weathered_planks` | 1k | ammo crate |
+| 9 | `dark_wood` | 1k | rifle stock |
+| 12 | `wooden_crate_01` (downloaded, **unused**) | 1k | no lid/ajar state, so the crate is primitives with #8 |
+
+### M2: values changed during tuning / additions beyond the spec
+| Where | Value | Spec -> tuned | Why |
+|---|---|---|---|
+| `Flare.bounce_friction` (new) | tangential speed kept per bounce | -> **0.35** | with 0.7 a flare thrown down at 10 deg skipped off the plateau into the sea |
+| Flare hiss | loop length | 20 s -> **4 s loop** | the volume follows the burn curve/sputter, so a 20 s sample is redundant and costs boot time |
+| `WeaponHolder` fill light | new | cold OmniLight3D (0.55, 0.62, 0.78), energy 1.4, range 2.5 (+ a cold SpotLight3D rim, energy 1.2), `light_cull_mask` = render layer 2 | the viewmodel crushed to black outside flare range. Viewmodel meshes are on render layer 2, so the fill lights nothing else. |
+| `WeaponHolder.hip_yaw_deg` | new | **7 deg** | keeps the stock out of frame |
+| Viewmodel sleeve | roughness | 0.35 -> **0.5** | 0.35 read as a gold pipe in flare light |
+| Viewmodel wood | tint / roughness / tex scale | 0.5 grey / 0.5 -> **(0.30, 0.28, 0.27) / 0.62 / 1.6** | red-brown wood broke the cold-palette rule; viewmodel metal roughness 0.55, metallic 0.7 |
+| Rifle muzzle flash | shape / colour / energy / light / fog energy | 2 crossed quads, (1.0,0.70,0.40), 12, light 8, 1.5 -> **spike along the barrel + 2 petals + hot core**, (1.0,0.85,0.60), 9 (core 40), light **14**, fog **3.0** | the cross read as a sprite |
+| `PostFx` tally | alpha / size / margin | 0.6 / - / - -> **0.95 / 34 px, outlined / (48,40)** | unreadable over the dark stock |
+| `wet_rock.gdshader` | `wet_roughness` / `puddle_roughness` / `SPECULAR` | 0.32 / 0.10 / 0.5+0.2w -> **0.50 / 0.20 / (0.3+0.1w)(1-0.5 puddle)** | moonlit specular clipped to snow-white and out-brightened the flare |
+| `Lighthouse` | plinth cap ring | full ring -> **gap left open at the door** | the cap closed the doorway 1.2 m above the floor, so the player could not enter (found by `crate.json`) |
+| `PlayerCamera` | recoil | `add_recoil(pitch, yaw)`; residual decays 0.5 deg/s | the residual of 1.0 deg per shot is pulled back over time |
+
+Implementation notes: `LightField` also implements the lightning reveal (0.6 s, no occlusion), which is a small
+addition to the M2 stub. The Rifle's `try_fire` while reloading with >= 1 round queues the shot until the
+0.45 s close finishes. `AmmoCrate.restock()` is ready for M4's `wave_started` / `wave_cleared` wiring.
+
+### M2: art-director leftovers after 3 rounds (flare_fight; all four sub-checks readable, none are blockers)
+- Right-hand wet rock in `flare_fight` and `calm` still shows a bright silvery specular (moon/sky) that rivals foam and the flare. Next try: lower `StormDirector.sun_energy` calm value (0.9 -> ~0.6) or darken `wet_rock` highlights further. Fixing it affects every M1 preset, so it needs a re-review of `calm`/`storm_peak`.
+- Rifle: still a boxy silhouette in cold light (receiver, grip). Ideas: bevelled receiver mesh, stronger rim, a cold edge on the wood.
+- Left sleeve reads as a plain pillar; the glove is hidden under the fore-end at the hip pose.
+- Flare shadows are only shown as dark ridges against the glow in `flare_fight` (the flare sits in a hollow). A rock closer to the flare would demonstrate (b) better.
+- Sway and bob (check e) cannot be judged in `flare_fight` (recoil dominates); the breathing sway is only ~0.35 deg.
+- Tally opacity was raised above the spec's 60% for legibility (0.95).

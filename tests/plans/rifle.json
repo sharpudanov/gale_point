@@ -1,0 +1,23 @@
+[
+  {"f": 0,   "to": 10, "mouse_motion": [0, -10]},
+  {"f": 20,  "mouse_button": "left", "hold": 3},
+  {"f": 24,  "expect": "weapon.shots_fired==1"},
+  {"f": 24,  "expect": "weapon.rifle_mag==4"},
+  {"f": 24,  "expect": "weapon.rifle_state==cycling"},
+  {"f": 24,  "expect": "camera.recoil_pitch>=3.0"},
+  {"f": 40,  "mouse_button": "left", "hold": 3},
+  {"f": 50,  "expect": "weapon.shots_fired==1"},
+  {"f": 100, "mouse_button": "left", "hold": 3},
+  {"f": 104, "expect": "weapon.shots_fired==2"},
+  {"f": 104, "expect": "weapon.rifle_mag==3"},
+  {"f": 180, "key": "R", "hold": 3},
+  {"f": 200, "expect": "weapon.rifle_state==reloading"},
+  {"f": 300, "expect": "weapon.rifle_mag==5"},
+  {"f": 300, "key": "W", "hold": 40},
+  {"f": 300, "key": "Shift", "hold": 40},
+  {"f": 320, "mouse_button": "left", "hold": 3},
+  {"f": 326, "expect": "weapon.shots_fired==2"},
+  {"f": 345, "mouse_button": "right", "hold": 25},
+  {"f": 362, "expect": "weapon.ads==true"},
+  {"f": 362, "expect": "camera.fov<=62"}
+]

@@ -115,6 +115,113 @@ func thunder(seconds: float = 4.0) -> AudioStreamWAV:
 	return _to_wav(out, n, false)
 
 
+## Rifle crack: 20 ms noise burst + 90 Hz thump (0.25 s) + 1.8 s lowpassed echo tail with two slap-backs.
+func rifle_crack(seconds: float = 2.2) -> AudioStreamWAV:
+	var n: int = int(seconds * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	var tail_lp: float = 0.0
+	var tail_lp2: float = 0.0
+	var a: float = _lp_coef(700.0)
+	var echoes: Array[Vector2] = [Vector2(0.0, 1.0), Vector2(0.28, 0.45), Vector2(0.65, 0.3)]  # (delay s, gain)
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var w: float = _white()
+		var crack: float = w * exp(-t / 0.005) if t < 0.02 else 0.0
+		var thump: float = sin(TAU * 90.0 * t) * exp(-t * 14.0)
+		tail_lp += a * (w - tail_lp)
+		tail_lp2 += a * (tail_lp - tail_lp2)
+		var tail: float = 0.0
+		for e: Vector2 in echoes:
+			var dt: float = t - e.x
+			if dt > 0.0:
+				tail += e.y * exp(-dt * 2.3) * minf(1.0, dt * 60.0)
+		out[i] = crack * 1.0 + thump * 0.8 + tail_lp2 * tail * 6.0 * (1.0 if t > 0.015 else 0.0)
+		out[i] *= clampf((seconds - t) / 0.3, 0.0, 1.0)
+	return _to_wav(out, n, false)
+
+
+## One short filtered click: damped sine plus a pinch of noise.
+func _click(out: PackedFloat32Array, start: float, freq: float, gain: float) -> void:
+	var len_s: int = int(0.008 * RATE)
+	var s0: int = int(start * RATE)
+	for i: int in len_s:
+		if s0 + i >= out.size():
+			return
+		var t: float = float(i) / RATE
+		var env: float = exp(-t / 0.0022)
+		out[s0 + i] += (sin(TAU * freq * t) * 0.8 + _white() * 0.2) * env * gain
+
+
+## Bolt clack: two clicks (1.8 kHz, 1.2 kHz) 70 ms apart.
+func bolt_clack() -> AudioStreamWAV:
+	var n: int = int(0.14 * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	_click(out, 0.0, 1800.0, 1.0)
+	_click(out, 0.07, 1200.0, 0.8)
+	return _to_wav(out, n, false)
+
+
+## Reload click: a lighter pair, 45 ms apart.
+func reload_click() -> AudioStreamWAV:
+	var n: int = int(0.1 * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	_click(out, 0.0, 1200.0, 0.8)
+	_click(out, 0.045, 1800.0, 1.0)
+	return _to_wav(out, n, false)
+
+
+## Flare launch: low thump plus a bandpassed whoosh (0.7 s).
+func flare_launch(seconds: float = 0.7) -> AudioStreamWAV:
+	var n: int = int(seconds * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	var lp: float = 0.0
+	var lp2: float = 0.0
+	var a_top: float = _lp_coef(2500.0)
+	var a_bottom: float = _lp_coef(300.0)
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var w: float = _white()
+		lp += a_top * (w - lp)
+		lp2 += a_bottom * (lp - lp2)
+		var band: float = lp - lp2  # 300 Hz - 2.5 kHz
+		var thump: float = sin(TAU * (110.0 - 60.0 * t) * t) * exp(-t * 10.0)
+		var whoosh: float = band * minf(1.0, t * 30.0) * exp(-t * 3.5)
+		out[i] = thump * 0.9 + whoosh * 2.0 + w * exp(-t / 0.004) * 0.5
+		out[i] *= clampf((seconds - t) / 0.1, 0.0, 1.0)
+	return _to_wav(out, n, false)
+
+
+## Flare hiss: bandpassed 3-6 kHz noise with crackle (~25/s). A 4 s loop; the flare scales the volume
+## to follow the burn curve and sputter.
+func flare_hiss(seconds: float = 4.0) -> AudioStreamWAV:
+	var n: int = int(seconds * RATE)
+	var total: int = n + int(LOOP_XFADE * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(total)
+	var lp_a: float = 0.0
+	var lp_b: float = 0.0
+	var lp_c: float = 0.0
+	var a_hi: float = _lp_coef(3000.0)
+	var a_lo: float = _lp_coef(6000.0)
+	var crackle_p: float = 25.0 / RATE
+	var crackle: float = 0.0
+	for i: int in total:
+		var w: float = _white()
+		lp_a += a_hi * (w - lp_a)
+		var hp: float = w - lp_a          # highpass 3 kHz
+		lp_b += a_lo * (hp - lp_b)        # lowpass 6 kHz
+		lp_c += a_lo * (lp_b - lp_c)
+		if _rng.randf() < crackle_p:
+			crackle = _rng.randf_range(0.5, 1.0)
+		crackle *= 0.97
+		out[i] = lp_c * 1.4 + crackle * _white() * 0.8
+	return _to_wav(out, n, true)
+
+
 func _to_wav(src: PackedFloat32Array, n: int, loop: bool) -> AudioStreamWAV:
 	var data: PackedFloat32Array = src
 	if loop:

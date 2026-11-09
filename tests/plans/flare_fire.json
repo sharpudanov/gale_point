@@ -1,0 +1,13 @@
+[
+  {"f": 0,    "to": 10, "mouse_motion": [0, 8]},
+  {"f": 15,   "key": "2", "hold": 3},
+  {"f": 50,   "mouse_button": "left", "hold": 3},
+  {"f": 56,   "expect": "flares.fired==1"},
+  {"f": 56,   "expect": "flares.left==2"},
+  {"f": 56,   "expect": "weapon.current==flare"},
+  {"f": 80,   "mouse_button": "left", "hold": 3},
+  {"f": 90,   "expect": "flares.fired==1"},
+  {"f": 150,  "expect": "flares.active==1"},
+  {"f": 150,  "expect": "audio.flare_hiss_active==true"},
+  {"f": 1150, "expect": "flares.active==1"}
+]

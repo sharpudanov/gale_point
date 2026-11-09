@@ -11,11 +11,11 @@ uniform float blend_sharpness = 4.0;
 uniform float darken = 0.55;
 uniform vec3 wet_tint : source_color = vec3(0.88, 0.90, 0.95);
 uniform float wetness : hint_range(0.0, 1.0) = 0.85;
-uniform float wet_roughness = 0.32;
+uniform float wet_roughness = 0.50;
 uniform sampler2D puddle_noise : repeat_enable, filter_linear_mipmap;
 uniform float puddle_scale = 0.05;
 uniform float puddle_threshold = 0.62;
-uniform float puddle_roughness = 0.1;
+uniform float puddle_roughness = 0.20;
 uniform float flat_slope = 0.92;
 uniform float normal_strength = 1.2;
 uniform float ao_strength = 1.0;
@@ -65,7 +65,7 @@ void fragment() {
 	vec3 wet_alb = alb * darken * mix(vec3(1.0), wet_tint, wetness);
 	ALBEDO = wet_alb * (1.0 - puddle * 0.35);
 	ROUGHNESS = mix(mix(rough, wet_roughness, wetness), puddle_roughness, puddle);
-	SPECULAR = 0.5 + 0.2 * wetness;
+	SPECULAR = (0.3 + 0.1 * wetness) * (1.0 - puddle * 0.5);  // keeps moonlit rock from clipping to snow-white
 	AO = mix(1.0, ao, ao_strength);
 	AO_LIGHT_AFFECT = 0.2;
 	NORMAL = normalize((VIEW_MATRIX * vec4(n_world, 0.0)).xyz);

@@ -22,6 +22,8 @@ signal died
 var island: Island
 var head: Node3D
 var camera: PlayerCamera
+var weapons: WeaponHolder
+var crate: AmmoCrate
 var hp: int = 3
 var god: bool = false
 var sprinting: bool = false
@@ -77,6 +79,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_apply_look()
 	elif event.is_action_pressed("release_mouse"):
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	elif event.is_action_pressed("interact"):
+		if crate != null and is_alive():
+			crate.use(self)
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
 		if DisplayServer.get_name() != "headless" and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

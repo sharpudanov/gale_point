@@ -17,6 +17,7 @@ const STONE_DIR: String = "res://assets/textures/stone_block_wall/"
 @export var plaster_albedo: float = 0.62
 @export var plaster_roughness: float = 0.8
 @export var segments: int = 48
+@export var crate_z: float = 1.4  ## ammo crate just inside the door
 @export_group("Lamp")
 @export var lamp_color: Color = Color(1.0, 0.74, 0.46)
 @export var lamp_emission_energy: float = 5.0
@@ -39,6 +40,7 @@ const STONE_DIR: String = "res://assets/textures/stone_block_wall/"
 @export var gutter_level: float = 0.15
 
 var beam: SpotLight3D
+var crate: AmmoCrate
 var lamp_light: OmniLight3D
 var beam_still: bool = false
 var lamp_on: bool = true
@@ -90,6 +92,10 @@ func _ready() -> void:
 
 	_build_top(top_y, iron)
 	_build_lamp()
+	crate = AmmoCrate.new()
+	crate.name = "AmmoCrate"
+	crate.position = Vector3(0.0, base_y, crate_z)
+	add_child(crate)
 
 
 func _process(delta: float) -> void:
@@ -164,9 +170,13 @@ func _lathe_wall(y0: float, y1: float, r0: float, r1: float, door: bool, thickne
 				_jamb(st, a, ya, yb, ra, rb, th, a == a_start)
 	# Top cap ring.
 	var rt: float = r1
+	# A wall that ends inside the door's height (the plinth) must leave the doorway open on top too.
+	var open_door_top: bool = door and door_top >= y1 - 0.01
+	var cap_start: float = asin(clampf(door_size.x * 0.5 / rt, 0.0, 1.0)) if open_door_top else 0.0
+	var cap_end: float = TAU - cap_start
 	for si: int in segments:
-		var a0: float = TAU * float(si) / segments
-		var a1: float = TAU * float(si + 1) / segments
+		var a0: float = lerpf(cap_start, cap_end, float(si) / segments)
+		var a1: float = lerpf(cap_start, cap_end, float(si + 1) / segments)
 		var o0: Vector3 = _ring_point(a0, rt, y1)
 		var o1: Vector3 = _ring_point(a1, rt, y1)
 		var i0: Vector3 = _ring_point(a0, rt - th, y1)

@@ -7,8 +7,8 @@ extends Node3D
 signal ammo_changed
 
 @export var switch_time: float = 0.45
-@export var hip_pos: Vector3 = Vector3(0.16, -0.17, -0.38)
-@export var ads_pos: Vector3 = Vector3(0.0, -0.105, -0.28)
+@export var hip_pos: Vector3 = Vector3(0.16, -0.17, -0.44)
+@export var ads_pos: Vector3 = Vector3(0.0, -0.105, -0.38)
 @export var flare_hip_pos: Vector3 = Vector3(0.15, -0.17, -0.34)
 @export var hip_yaw_deg: float = 7.0
 @export var sway_breath_hz: float = 0.25
@@ -19,6 +19,7 @@ signal ammo_changed
 @export var sway_spring: float = 9.0
 @export var sway_mouse_gain: float = 0.6
 @export var bob_gain: float = 1.6
+@export var bob_ads_scale: float = 0.15   ## walk bob multiplier at full ADS (keeps the sights steady)
 @export var sprint_offset: Vector3 = Vector3(0.05, -0.07, 0.03)
 @export_group("Fill light")
 @export var fill_color: Color = Color(0.55, 0.62, 0.78)   ## cold: the only warm lights are flares, flash, lamp
@@ -29,6 +30,8 @@ signal ammo_changed
 ## "rifle" or "flare"
 var current: String = "rifle"
 var ads: bool = false
+## --ads debug arg: behave as if the aim button were held.
+var force_ads: bool = false
 var rifle: Rifle
 var flare_gun: FlareGun
 ## Seconds into the scripted shot (--fire_at); < 0 disables.
@@ -132,7 +135,7 @@ func _physics_process(delta: float) -> void:
 		_start_switch(want_switch)
 
 	var ready_to_act: bool = _switch_left <= 0.0
-	ads = ready_to_act and current == "rifle" and not sprinting and Input.is_action_pressed("aim") and not _player.input_locked
+	ads = ready_to_act and current == "rifle" and not sprinting and (force_ads or (Input.is_action_pressed("aim") and not _player.input_locked))
 	_camera.ads = ads
 	if ready_to_act and not sprinting:
 		if current == "rifle":
@@ -220,7 +223,7 @@ func _process(delta: float) -> void:
 		base = hip_pos.lerp(ads_pos, _ads_amt)
 	else:
 		base = flare_hip_pos
-	var bob: Vector3 = _camera.bob_offset * bob_gain
+	var bob: Vector3 = _camera.bob_offset * bob_gain * lerpf(1.0, bob_ads_scale, _ads_amt)
 	var pos: Vector3 = base + bob + sprint_offset * _sprint_amt + Vector3(0.0, -0.32 * sp, 0.06 * sp)
 	var rot: Vector3 = Vector3(sway.x, sway.y + hip_yaw_deg * (1.0 - _ads_amt), 0.0) + sprint_tilt_deg * _sprint_amt + Vector3(-30.0 * sp, 0.0, 0.0)
 

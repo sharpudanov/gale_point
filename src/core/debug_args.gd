@@ -12,6 +12,7 @@ var flash_at: float = -1.0            ## < 0 = no forced strike
 var spawn_at: Array[Vector2] = []
 var freeze_enemies: bool = false
 var aim: bool = false
+var ads: bool = false                 ## hold the rifle in ADS (forces the aim input)
 var place_flare: float = -1.0         ## < 0 = none
 var god: bool = false
 var has_player_at: bool = false
@@ -52,6 +53,7 @@ static func parse(preset_defaults: Dictionary) -> DebugArgs:
 			d.spawn_at.append(_vec2(pair))
 	d.freeze_enemies = get_v.call("freeze_enemies") != null
 	d.aim = get_v.call("aim") != null
+	d.ads = get_v.call("ads") != null
 	v = get_v.call("place_flare")
 	if v != null:
 		d.place_flare = float(str(v))

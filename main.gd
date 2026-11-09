@@ -87,6 +87,7 @@ func _build() -> void:
 	player.camera.add_child(weapons)
 	weapons.setup(player, player.camera, projectiles, ocean, light_field, soundscape, weather)
 	weapons.fire_at = args.fire_at
+	weapons.force_ads = args.ads
 	player.weapons = weapons
 	if args.place_flare >= 0.0:
 		_place_flare(args.place_flare)

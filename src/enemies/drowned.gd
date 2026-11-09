@@ -36,6 +36,19 @@ extends Node3D
 @export var drag_factor: float = 0.12
 @export var drip_rate: float = 12.0
 @export var frozen_drag_speed: float = 0.7   ## fraction of base_speed the hem trails by while frozen
+@export_group("Hitbox")
+@export var hitbox_radius: float = 0.58
+@export var hitbox_height: float = 2.15
+@export var hitbox_center_y: float = 1.05
+@export var shoulder_box: Vector3 = Vector3(1.10, 0.75, 0.65)   ## cloak + sleeves
+@export var shoulder_y: float = 1.35
+@export_group("Searing (lit)")
+@export var sear_response: float = 6.0       ## 1/s: how fast the ember glow rises and fades
+@export var sear_face_energy: float = 0.9
+@export var sear_eye_energy: float = 3.0
+@export var sear_color: Color = Color(1.0, 0.55, 0.22)
+@export var steam_amount: int = 16
+@export var steam_lifetime: float = 1.6
 
 var id: int = 0
 var hp: float = 100.0
@@ -52,6 +65,10 @@ var _body: Node3D
 var _cloth: Array[MeshInstance3D] = []
 var _hitbox: Area3D
 var _drips: GPUParticles3D
+var _steam: GPUParticles3D
+var _glow_mats: Array[StandardMaterial3D] = []
+var _glow_is_eye: Array[bool] = []
+var _sear: float = 0.0   ## 0..1 smoothed "searing in the light" amount
 var _age: float = 0.0
 var _state_t: float = 0.0
 var _moan_t: float = 0.0
@@ -88,19 +105,30 @@ func _ready() -> void:
 	for mi: Node in _body.get_children():
 		if mi is MeshInstance3D:
 			(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	_build_glow_materials()
+	# The hitbox rides on _body, so it follows the emerge, bob, shudder and lean of the visible cloak.
 	_hitbox = Area3D.new()
 	_hitbox.name = "Hitbox"
 	_hitbox.collision_layer = 4   # layer 3: enemy hitboxes
 	_hitbox.collision_mask = 0
 	var shape: CapsuleShape3D = CapsuleShape3D.new()
-	shape.radius = 0.4
-	shape.height = 1.9
+	shape.radius = hitbox_radius
+	shape.height = hitbox_height
 	var cs: CollisionShape3D = CollisionShape3D.new()
+	cs.name = "Body"
 	cs.shape = shape
-	cs.position.y = 1.0
+	cs.position.y = hitbox_center_y
 	_hitbox.add_child(cs)
-	add_child(_hitbox)
+	var box: BoxShape3D = BoxShape3D.new()
+	box.size = shoulder_box
+	var shoulders: CollisionShape3D = CollisionShape3D.new()
+	shoulders.name = "Shoulders"
+	shoulders.shape = box
+	shoulders.position.y = shoulder_y
+	_hitbox.add_child(shoulders)
+	_body.add_child(_hitbox)
 	_build_drips()
+	_build_steam()
 	rotation.y = _heading
 	if state == "emerging":
 		_body.position.y = -emerge_depth
@@ -129,12 +157,19 @@ func telemetry() -> Dictionary:
 	}
 
 
+## Whether a rifle hit hurts. `shootable` is LightField's verdict for the hit point itself; a lit Drowned (its
+## chest is in light) is also hurt when the shot lands on the lower cloak or the back, where the ground can
+## occlude a flare's light.
+func hit_shootable(shootable: bool) -> bool:
+	return shootable or lit or bool(_hub.field.query(chest_position())["shootable"])
+
+
 ## Called by Rifle._hitscan. `shootable` = LightField said the hit point is lit.
 func on_rifle_hit(point: Vector3, dir: Vector3, shootable: bool, damage: float) -> void:
 	if state == "dying":
 		return
-	if shootable:
-		hp -= damage
+	if hit_shootable(shootable):
+		hp -= maxf(damage, 0.0)
 		if hp <= 0.0:
 			_die("rifle")
 			_hub.lethal_hit(point, dir)
@@ -302,7 +337,7 @@ func _tick_dying() -> void:
 
 # --- visuals ----------------------------------------------------------------------------------
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	var t: float = _age
 	var k: float = clampf(speed / (base_speed * dark_mult), 0.0, 1.0)
 	var sh: Vector3 = Vector3.ZERO
@@ -326,6 +361,84 @@ func _process(_delta: float) -> void:
 	for mi: MeshInstance3D in _cloth:
 		mi.set_instance_shader_parameter("flutter_scale", _flutter)
 		mi.set_instance_shader_parameter("drag_offset", local_drag)
+	_update_sear(delta)
+
+
+## Searing: while lit (so shootable) the cloak shows ember rim light and cracks, the face and eyes catch warm
+## light and steam rises. The crack intensity grows as hp falls. Pure shading, no light node, so it is never a
+## gameplay light source.
+func _update_sear(delta: float) -> void:
+	var want: float = 1.0 if (lit and state != "dying") else 0.0
+	_sear = move_toward(_sear, want, sear_response * delta)
+	var wear: float = clampf(1.0 - hp / maxf(max_hp, 0.001), 0.0, 1.0)
+	for mi: MeshInstance3D in _cloth:
+		mi.set_instance_shader_parameter("lit_amount", _sear)
+		mi.set_instance_shader_parameter("damage_amount", wear)
+	for i: int in _glow_mats.size():
+		_glow_mats[i].emission_energy_multiplier = (sear_eye_energy if _glow_is_eye[i] else sear_face_energy) * _sear
+	_steam.emitting = _sear > 0.05 and state != "dying"
+
+
+func _build_glow_materials() -> void:
+	for mi: MeshInstance3D in DrownedBuilder.glow_instances(_body):
+		var m: StandardMaterial3D = (mi.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D
+		m.emission_enabled = true
+		m.emission = sear_color
+		m.emission_energy_multiplier = 0.0
+		mi.material_override = m
+		_glow_mats.append(m)
+		_glow_is_eye.append(String(mi.get_meta("glow")) == "eye")
+
+
+func _build_steam() -> void:
+	_steam = GPUParticles3D.new()
+	_steam.name = "Steam"
+	_steam.amount = steam_amount
+	_steam.lifetime = steam_lifetime
+	_steam.local_coords = false
+	_steam.emitting = false
+	_steam.visibility_aabb = AABB(Vector3(-3, -1, -3), Vector3(6, 6, 6))
+	_steam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var pm: ParticleProcessMaterial = ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.38
+	pm.direction = Vector3.UP
+	pm.spread = 18.0
+	pm.initial_velocity_min = 0.5
+	pm.initial_velocity_max = 1.1
+	pm.gravity = Vector3(0.0, 0.35, 0.0)
+	pm.damping_min = 0.3
+	pm.damping_max = 0.6
+	pm.scale_min = 0.5
+	pm.scale_max = 1.0
+	var grow: Curve = Curve.new()
+	grow.add_point(Vector2(0.0, 0.4))
+	grow.add_point(Vector2(1.0, 1.4))
+	var grow_tex: CurveTexture = CurveTexture.new()
+	grow_tex.curve = grow
+	pm.scale_curve = grow_tex
+	# Ember orange at birth, ashy grey as it cools, gone at the top.
+	var ramp: Gradient = Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.2, 0.6, 1.0])
+	ramp.colors = PackedColorArray([
+		Color(1.0, 0.55, 0.22, 0.0), Color(1.0, 0.55, 0.22, 0.5),
+		Color(0.62, 0.58, 0.55, 0.28), Color(0.5, 0.5, 0.52, 0.0)])
+	var ramp_tex: GradientTexture1D = GradientTexture1D.new()
+	ramp_tex.gradient = ramp
+	pm.color_ramp = ramp_tex
+	_steam.process_material = pm
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = HitFx._soft()
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = Vector2(0.26, 0.26)
+	quad.material = mat
+	_steam.draw_pass_1 = quad
+	_steam.position = Vector3(0.0, 1.55, 0.0)
+	add_child(_steam)
 
 
 func _build_drips() -> void:

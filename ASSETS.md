@@ -19,3 +19,4 @@ All third-party assets are CC0 from Poly Haven, added only via the asset-fetcher
 | Dark Wood | textures | 1k | res://assets/textures/dark_wood/ | https://polyhaven.com/a/dark_wood | Dario Barresi, Dimitrios Savva, Rico Cilliers | CC0 | 2026-11-09 |
 | Wooden Crate 01 | models | 1k | res://assets/models/wooden_crate_01/ | https://polyhaven.com/a/wooden_crate_01 | James Ray Cock | CC0 | 2026-11-09 |
 | Hessian 230 | textures | 1k | res://assets/textures/hessian_230/ | https://polyhaven.com/a/hessian_230 | colormass, Rico Cilliers | CC0 | 2026-11-09 |
+| Bolt Action Rifle 7.62 | models | 2k | res://assets/models/bolt_action_rifle_7_62/ | https://polyhaven.com/a/bolt_action_rifle_7_62 | Mateusz Sadek | CC0 | 2026-11-09 |

@@ -32,7 +32,7 @@ var _noise: FastNoiseLite
 
 
 func _ready() -> void:
-	near = 0.03
+	near = 0.01
 	far = 600.0
 	fov = fov_hip
 	_noise = FastNoiseLite.new()

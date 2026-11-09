@@ -19,6 +19,7 @@ extends Node3D
 @export var launch_db: float = -2.0
 @export var hiss_db: float = -4.0
 @export var kill_thud_db: float = -4.0
+@export var deflect_db: float = -5.0
 @export var moan_db: float = -2.0
 @export var moan_variants: int = 4
 @export_group("Mix")
@@ -40,6 +41,7 @@ var thunders_played: int = 0
 var rifle_cracks: int = 0
 var hiss_active: int = 0
 var kill_thuds: int = 0
+var deflects: int = 0
 var moans_played: int = 0
 var duck_db: float = 0.0          ## current ambience duck (<= 0), for telemetry
 
@@ -57,6 +59,8 @@ var _reload_stream: AudioStreamWAV
 var _launch_stream: AudioStreamWAV
 var _hiss_stream: AudioStreamWAV
 var _thud_stream: AudioStreamWAV
+var _deflect_stream: AudioStreamWAV
+var _deflect_pool: Array[AudioStreamPlayer] = []
 var _moan_streams: Array[AudioStreamWAV] = []
 
 
@@ -132,6 +136,9 @@ func _ready() -> void:
 	_thud_stream = synth.kill_thud()
 	for v: int in moan_variants:
 		_moan_streams.append(synth.moan(v))
+	_deflect_stream = synth.dark_deflect()
+	for i: int in 2:
+		_deflect_pool.append(_oneshot2d("Deflect%d" % i, _deflect_stream, deflect_db))
 	_wind.play()
 	_rain.play()
 	for i: int in _surf.size():
@@ -173,6 +180,12 @@ func play_rifle_crack() -> void:
 	rifle_cracks += 1
 	duck(crack_duck_db)
 	_play_pooled(_crack_pool, _crack_pool[0].stream)
+
+
+## Dull, hollow metallic "tonk": the shot hit a Drowned that is in the dark and is immune. 2D so it always reads.
+func play_deflect() -> void:
+	deflects += 1
+	_play_pooled(_deflect_pool, _deflect_stream)
 
 
 func play_bolt() -> void:
@@ -292,6 +305,7 @@ func telemetry() -> Dictionary:
 		"surf_gain": snappedf(surf_gain, 0.001),
 		"rifle_cracks": rifle_cracks,
 		"kill_thuds": kill_thuds,
+		"deflects": deflects,
 		"flare_hiss_active": hiss_active > 0,
 		"moans_played": moans_played,
 		"thunders": thunders_played,

@@ -28,8 +28,6 @@ const SHADER_PATH: String = "res://shaders/post_film.gdshader"
 @export var tally_fade_time: float = 2.0
 @export var tally_font_size: int = 34
 @export var tally_margin: Vector2 = Vector2(48.0, 40.0)
-@export var dot_alpha: float = 0.25
-@export var dot_size: float = 2.0
 
 var player: Player
 var weapons: WeaponHolder
@@ -42,7 +40,8 @@ var _frame: int = 0
 var _spike: float = 0.0
 var _t: float = 0.0
 var _tally: Label
-var _dot: ColorRect
+var _reticle: Reticle
+var _markers: Dictionary = {"lit": 0, "kill": 0, "dark": 0}
 var _tally_left: float = 0.0
 var _card: Label
 var _card_t: float = -1.0       ## seconds since the card began fading in; < 0 = hidden
@@ -76,16 +75,9 @@ func _ready() -> void:
 	_tally.offset_bottom = -tally_margin.y
 	_tally.modulate.a = 0.0
 	add_child(_tally)
-	_dot = ColorRect.new()
-	_dot.name = "HipDot"
-	_dot.color = Color(1.0, 1.0, 1.0, dot_alpha)
-	_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_dot.set_anchors_preset(Control.PRESET_CENTER)
-	_dot.offset_left = -dot_size * 0.5
-	_dot.offset_right = dot_size * 0.5
-	_dot.offset_top = -dot_size * 0.5
-	_dot.offset_bottom = dot_size * 0.5
-	add_child(_dot)
+	_reticle = Reticle.new()
+	_reticle.name = "Reticle"
+	add_child(_reticle)
 	_card = Label.new()
 	_card.name = "EndCard"
 	_card.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -106,6 +98,13 @@ func _ready() -> void:
 func set_weapons(w: WeaponHolder) -> void:
 	weapons = w
 	w.ammo_changed.connect(show_tally)
+	w.rifle.hit_marker.connect(_on_hit_marker)
+
+
+## A rifle shot hit an enemy: flash the matching marker around the reticle.
+func _on_hit_marker(kind: String) -> void:
+	_markers[kind] = int(_markers[kind]) + 1
+	_reticle.flash(kind)
 
 
 func show_tally() -> void:
@@ -178,7 +177,8 @@ func _process(delta: float) -> void:
 	_mat.set_shader_parameter("fade", fade)
 	_tally_left = maxf(0.0, _tally_left - delta)
 	_tally.modulate.a = tally_alpha * clampf(_tally_left / tally_fade_time, 0.0, 1.0)
-	_dot.visible = weapons != null and not weapons.ads and player != null and player.is_alive()
+	_reticle.visible = weapons != null and player != null and player.is_alive()
+	_reticle.ads = weapons != null and weapons.ads
 
 
 func telemetry() -> Dictionary:
@@ -190,4 +190,7 @@ func telemetry() -> Dictionary:
 		"grain": grain_amount,
 		"tally_alpha": snappedf(_tally.modulate.a, 0.001),
 		"tally_text": _tally.text,
+		"reticle": ("hidden" if not _reticle.visible else ("ads" if _reticle.ads else "hip")),
+		"hit_markers": _markers.duplicate(),
+		"marker_active": _reticle.marker_active(),
 	}

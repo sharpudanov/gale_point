@@ -2,7 +2,9 @@ shader_type spatial;
 render_mode cull_disabled, depth_draw_opaque;
 // The Drowned's cloak and sleeves (SPEC 6.4). Vertex flutter weighted by (1 - UV.y)^p so the hood is
 // fixed and the hem moves most; tattered hem and death dissolve are alpha-scissored by noise.
-// No emission and no rim term, ever (SPEC 5.1).
+// The only emission is the "searing" state (SPEC 5.1): while the Drowned stands in gameplay light
+// (lit_amount > 0) an ember rim and cracks glow on the hood and shoulders, and the cracks widen and brighten
+// as its hp (damage_amount) drops. Otherwise it is pure unlit cloth: no emission, no rim.
 
 uniform vec4 cloth_color : source_color = vec4(0.035, 0.04, 0.045, 1.0);
 uniform float roughness : hint_range(0.0, 1.0) = 0.75;
@@ -20,11 +22,19 @@ uniform sampler2D detail_normal : hint_normal, repeat_enable, filter_linear_mipm
 uniform sampler2D detail_rough : hint_default_white, repeat_enable, filter_linear_mipmap;
 uniform vec2 detail_tiling = vec2(7.0, 4.0);
 uniform float detail_normal_depth = 0.8;
+uniform vec3 ember_color : source_color = vec3(1.0, 0.55, 0.22);
+uniform float ember_energy = 2.2;
+uniform float rim_power = 5.0;
+uniform vec2 crack_tiling = vec2(5.0, 3.5);
+uniform float crack_width_min = 0.012;   // crack half-width in noise units at full hp
+uniform float crack_width_max = 0.05;    // ... and at 0 hp
 
 instance uniform float time_offset = 0.0;
 instance uniform float dissolve : hint_range(0.0, 1.0) = 0.0;
 instance uniform float flutter_scale = 1.0;
 instance uniform vec3 drag_offset = vec3(0.0);   // model space: -velocity * 0.12
+instance uniform float lit_amount : hint_range(0.0, 1.0) = 0.0;      // 1 = searing in the light (shootable)
+instance uniform float damage_amount : hint_range(0.0, 1.0) = 0.0;   // 1 - hp / max_hp
 
 void vertex() {
 	float w = pow(clamp(1.0 - UV.y, 0.0, 1.0), hem_weight_pow);
@@ -57,4 +67,16 @@ void fragment() {
 	SPECULAR = specular;
 	NORMAL_MAP = texture(detail_normal, duv).xyz;
 	NORMAL_MAP_DEPTH = detail_normal_depth;
+	if (lit_amount > 0.001) {
+		// Hood and shoulders (UV.y near 1) glow most; the hem only a little.
+		float upper = mix(0.25, 1.0, smoothstep(0.2, 0.8, UV.y));
+		float rim = pow(1.0 - clamp(abs(dot(normalize(NORMAL), normalize(VIEW))), 0.0, 1.0), rim_power);   // abs: the lathe winding flips NORMAL
+		// Cracks: thin ridges of the noise (|n - 0.5| small). They widen and brighten as hp drops.
+		float cn = texture(tatter_tex, UV * crack_tiling + vec2(0.13, 0.71)).r;
+		float half_w = mix(crack_width_min, crack_width_max, damage_amount);
+		float crack = 1.0 - smoothstep(half_w * 0.4, half_w, abs(cn - 0.5));
+		float flicker = 0.85 + 0.15 * sin(TIME * 9.0 + time_offset * 3.0 + UV.y * 20.0);
+		float strength = rim * 0.7 + crack * mix(0.9, 2.2, damage_amount);
+		EMISSION = ember_color * ember_energy * strength * upper * flicker * lit_amount;
+	}
 }

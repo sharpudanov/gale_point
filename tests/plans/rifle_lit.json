@@ -1,5 +1,8 @@
 [
   {"f": 20, "expect": "enemies.list.0.lit==true"},
   {"f": 30, "mouse_button": "left", "hold": 3},
-  {"f": 36, "expect": "weapon.hits_lit==1"}
+  {"f": 36, "expect": "weapon.hits_lit==1"},
+  {"f": 36, "expect": "fx.hit_markers.kill==1"},
+  {"f": 36, "expect": "fx.hit_markers.dark==0"},
+  {"f": 36, "expect": "audio.deflects==0"}
 ]

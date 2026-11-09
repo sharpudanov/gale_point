@@ -6,6 +6,8 @@ extends Node3D
 
 signal ammo_changed
 signal shot_fired
+## A shot hit an enemy: "lit" (hurt it), "kill" (lit and it died) or "dark" (immune, deflected).
+signal hit_marker(kind: String)
 
 @export var mag_size: int = 5
 @export var start_reserve: int = 10
@@ -22,7 +24,7 @@ signal shot_fired
 @export var bolt_down: float = 0.15
 @export var bolt_settle: float = 0.35
 @export var bolt_lift_deg: float = 80.0
-@export var bolt_travel: float = 0.045
+@export var bolt_travel: float = 0.08
 @export_group("Reload")
 @export var reload_open: float = 0.45
 @export var reload_per_round: float = 0.5
@@ -32,6 +34,7 @@ signal shot_fired
 @export var recoil_yaw_deg: float = 1.5
 @export var shot_trauma: float = 0.12
 @export var kick_back: float = 0.12
+@export var kick_back_ads_scale: float = 0.2   ## ADS: the camera sits just behind the scope, so the rifle barely slides back
 @export var kick_rot_deg: float = 12.0
 @export var kick_spring: float = 18.0
 @export var kick_damping: float = 0.7
@@ -53,6 +56,8 @@ var reserve: int = 10
 var shots_fired: int = 0
 var hits_lit: int = 0
 var hits_dark: int = 0
+## 0..1: how far the rifle is aimed down sights (set by WeaponHolder).
+var ads_amount: float = 0.0
 ## 0..1: how far the rifle is tipped for the reload animation (read by WeaponHolder if wanted).
 var reload_pose: float = 0.0
 
@@ -62,6 +67,7 @@ var _field: LightField
 var _audio: Soundscape
 var _model: Node3D
 var _bolt: Node3D
+var _right_hand: Node3D
 var _muzzle: Marker3D
 var _bolt_base: Vector3
 var _cycle_t: float = 0.0
@@ -97,7 +103,8 @@ func _ready() -> void:
 	var gun: Node3D = ViewmodelBuilder.rifle()
 	_model.add_child(gun)
 	_model.add_child(ViewmodelBuilder.rifle_left_arm())
-	_model.add_child(ViewmodelBuilder.rifle_right_hand())
+	_right_hand = ViewmodelBuilder.rifle_right_hand()
+	_model.add_child(_right_hand)
 	_bolt = gun.get_node("Bolt") as Node3D
 	_bolt_base = _bolt.position
 	_muzzle = gun.get_node("Muzzle") as Marker3D
@@ -261,11 +268,21 @@ func _hitscan(ads: bool) -> void:
 	var point: Vector3 = hit["position"]
 	var info: Dictionary = _field.query(point) if _field != null else {"shootable": false}
 	var shootable: bool = bool(info["shootable"])
+	# The target may widen the verdict (a lit Drowned is hurt anywhere on its body).
+	if target.has_method("hit_shootable"):
+		shootable = bool(target.call("hit_shootable", shootable))
+	var was_alive: bool = not target.has_method("is_alive") or bool(target.call("is_alive"))
 	if shootable:
 		hits_lit += 1
 	else:
 		hits_dark += 1
 	target.call("on_rifle_hit", point, dir, shootable, damage_lit if shootable else damage_dark)
+	var killed: bool = was_alive and target.has_method("is_alive") and not bool(target.call("is_alive"))
+	if shootable:
+		hit_marker.emit("kill" if killed else "lit")
+	else:
+		_audio.play_deflect()
+		hit_marker.emit("dark")
 
 
 # --- visuals ----------------------------------------------------------------------------------
@@ -276,7 +293,8 @@ func _process(delta: float) -> void:
 	_kick_v += accel * delta
 	_kick += _kick_v * delta
 	var tilt: float = reload_pose
-	_model.position = Vector3(0.0, 0.0, kick_back * _kick) + Vector3(-0.02, 0.01, 0.0) * tilt
+	_right_hand.visible = ads_amount < 0.5   # in ADS the grip hand sits behind the camera
+	_model.position = Vector3(0.0, 0.0, kick_back * lerpf(1.0, kick_back_ads_scale, ads_amount) * _kick) + Vector3(-0.02, 0.01, 0.0) * tilt
 	_model.rotation_degrees = Vector3(kick_rot_deg * _kick + 14.0 * tilt, 0.0, -18.0 * tilt)
 
 

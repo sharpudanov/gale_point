@@ -295,8 +295,10 @@ layer 1).
 - Two sleeve strips: quad strips 0.12 × 0.7 m, using the cloth shader.
 - Face: sphere r 0.11, scaled (1, 1.3, 0.8), recessed 0.12 m in the hood. Albedo (0.55, 0.56, 0.55), roughness 0.5. Two eye-socket spheres r 0.02, albedo (0.02, 0.02, 0.02).
 - Hands: capsules r 0.03, length 0.18, albedo (0.50, 0.51, 0.50).
-- Hitbox: Area3D capsule r 0.4, h 1.9. Casts shadows.
-- **No emission anywhere.** The face is pale albedo, so it only shows when lit.
+- Hitbox: Area3D parented to `_body` (it follows emerge, bob, shudder and lean): capsule r 0.58, h 2.15 at y 1.05 plus a shoulder/sleeve box 1.10 x 0.75 x 0.65 at y 1.35. Casts shadows.
+- **Emission only while "searing" (lit, so shootable).** Unlit cloth has no emission and no rim. While `lit` the cloth shader (`lit_amount`, smoothed 0..1) adds `Color(1.0, 0.55, 0.22) * 2.2` as a grazing rim plus crack veins, strongest on hood and shoulders; the cracks widen and brighten as hp drops (`damage_amount = 1 - hp/100`). The face and eye sockets get warm emission, and a steam/ash particle emitter rises from the shoulders. All of it is shading and particles: no light node, never a gameplay light.
+- **Hit feedback (PostFx `Reticle`):** lit hit = 4 golden `#FFB266` X-ticks for 0.22 s (bigger on a kill); dark (immune) hit = cold slate-blue deflect ring for 0.25 s plus a dull metallic "tonk" (`Soundscape.play_deflect`). Hit/kill/dark counts: `fx.hit_markers`, `audio.deflects`.
+- **Hit rule:** `Drowned.hit_shootable()` = point is lit OR the Drowned is lit OR its chest is shootable, so hitting the lower cloak or back of a lit enemy never does 0 damage because of ground occlusion. `LightField` flare occlusion rays aim 0.9 m above the flare and `flare_radius` is 15.5 m.
 
 **Waves** (u = t / night_len). Start times and spawn intervals scale by k.
 
@@ -519,7 +521,7 @@ Equirectangular lookup: `uv = (atan(dir.x, −dir.z)/TAU + 0.5 + hdri_yaw/TAU, a
 | `instance uniform time_offset` | random per Drowned |
 
 Vertex: `offset = (sin(k·y − ω·t + phase)·flutter_amp + wind·wind_strength·0.25 + drag_offset) · weight`.
-No emission and no rim term.
+No emission and no rim term while unlit; the "searing" emission (see 4.8) is driven by the `lit_amount` / `damage_amount` instance uniforms.
 
 ### 6.5 `sea_mist.gdshader` (`shader_type fog`)
 | Uniform | Default |
@@ -914,7 +916,7 @@ Every milestone follows the CLAUDE.md workflow:
     - (a) The Drowned read as dark tattered silhouettes in the fog: shape, not detail.
     - (b) The hem visibly flutters and trails.
     - (c) The face is faint and only readable when lit.
-    - (d) No emission, rim or outline on enemies.
+    - (d) No emission, rim or outline on enemies, except the ember "searing" glow while an enemy stands in light (cracks + rim on hood/shoulders, warm face and eyes, steam); it must never look like a light source on the ground.
     - (e) Wet trails read on the rock in `drowned_close`.
 
 ### M4: waves, escalation, dawn
@@ -1105,3 +1107,9 @@ plus a sling follow-up, all re-checked by eye.
 - The dawn card is a plain `Label`: no fade-out and no hint that Enter restarts (by design, no prompt text).
 - Still open from earlier milestones: horizon seam, flat lightning and dawn, unreadable wet trails (M3 (e)).
 
+
+### Combat & weapon pass (rifle model, reticle, hitboxes, searing)
+- **Rifle viewmodel is now Poly Haven's CC0 "Bolt Action Rifle 7.62"** (`res://assets/models/bolt_action_rifle_7_62/`; the requested slug `bolt_action_rifle_762` does not exist, the real one is `bolt_action_rifle_7_62`). Real scale (1.23 m). `ViewmodelBuilder.rifle()` instances the glTF, turns it so the muzzle points to -Z, puts every mesh on render layer 2, dims the albedo (`RIFLE_TINT`) and keeps the scope glass see-through. The two bolt meshes are re-parented under a `Bolt` pivot on the bore axis, so `Rifle` still animates `rotation.z` (lift) and `position.z` (draw back; `bolt_travel` 0.08). The loose cartridge mesh is removed. The primitive rifle is gone; the primitive hands remain, shifted onto the new model (`LEFT_ARM_OFFSET`, `RIGHT_HAND_OFFSET`); the right hand hides in ADS.
+- **ADS** looks along the short scope on the receiver: `ads_pos = (-SCOPE_X, -SCOPE_Y, -(SCOPE_REAR_Z + 0.15))`, i.e. the eye sits 15 cm behind the tube. The rifle's kick-back is scaled to 0.2 in ADS (`kick_back_ads_scale`) so the scope never reaches the camera, and walk bob is x0.15 (`bob_ads_scale`). `PlayerCamera.near = 0.01`.
+- **Reticle** (`src/fx/reticle.gd`, owned by PostFx): hip = 3 px ivory dot with a dark outline plus 4 ticks with a gap at 80% alpha; ADS = fine dark-edged crosshair with a `#FFC27A` amber pinpoint. Presets `ads_aim`, `hit_lit`, `hit_dark`, `drowned_close`, `flare_fight` show them.
+- `rifle_dark.json` / `rifle_lit.json` also expect `fx.hit_markers.dark|kill`, `audio.deflects`.

@@ -8,7 +8,7 @@ signal ammo_changed
 
 @export var switch_time: float = 0.45
 @export var hip_pos: Vector3 = Vector3(0.16, -0.17, -0.44)
-@export var ads_pos: Vector3 = Vector3(0.0, -0.105, -0.38)
+@export var ads_pos: Vector3 = Vector3(-ViewmodelBuilder.SCOPE_X, -ViewmodelBuilder.SCOPE_Y, -(ViewmodelBuilder.SCOPE_REAR_Z + 0.15))   ## eye 15 cm behind the scope tube
 @export var flare_hip_pos: Vector3 = Vector3(0.15, -0.17, -0.34)
 @export var hip_yaw_deg: float = 7.0
 @export var sway_breath_hz: float = 0.25
@@ -227,6 +227,7 @@ func _process(delta: float) -> void:
 	var pos: Vector3 = base + bob + sprint_offset * _sprint_amt + Vector3(0.0, -0.32 * sp, 0.06 * sp)
 	var rot: Vector3 = Vector3(sway.x, sway.y + hip_yaw_deg * (1.0 - _ads_amt), 0.0) + sprint_tilt_deg * _sprint_amt + Vector3(-30.0 * sp, 0.0, 0.0)
 
+	rifle.ads_amount = _ads_amt
 	var active: Node3D = rifle if _shown == "rifle" else flare_gun
 	active.position = pos
 	active.rotation_degrees = rot

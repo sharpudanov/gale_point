@@ -67,6 +67,16 @@ static func cloth_instances(root: Node3D) -> Array[MeshInstance3D]:
 	return out
 
 
+## Face and eye-socket meshes (tagged "glow"); each Drowned gives them private materials so the warm
+## "searing" glow can be driven per enemy.
+static func glow_instances(root: Node3D) -> Array[MeshInstance3D]:
+	var out: Array[MeshInstance3D] = []
+	for c: Node in root.get_children():
+		if c is MeshInstance3D and c.has_meta("glow"):
+			out.append(c as MeshInstance3D)
+	return out
+
+
 static func build() -> Node3D:
 	var root: Node3D = Node3D.new()
 	root.name = "DrownedBody"
@@ -113,6 +123,7 @@ static func build() -> Node3D:
 	face.scale = Vector3(0.85, 1.35, 0.6)
 	face.material_override = _face()
 	face.position = Vector3(0.0, 1.91, 0.0)
+	face.set_meta("glow", "face")
 	root.add_child(face)
 	for sx: float in [-0.04, 0.04]:
 		var eye: MeshInstance3D = MeshInstance3D.new()
@@ -125,6 +136,7 @@ static func build() -> Node3D:
 		eye.mesh = es
 		eye.material_override = _socket()
 		eye.position = Vector3(sx, 1.95, -0.075)
+		eye.set_meta("glow", "eye")
 		root.add_child(eye)
 	return root
 

@@ -2,8 +2,7 @@ class_name ViewmodelBuilder
 extends RefCounted
 ## Static builders for the first-person viewmodels (SPEC 4.5 / 4.6): bolt-action rifle, break-action
 ## flare gun, oilskin sleeve and wool glove. Everything is primitives plus Poly Haven wear textures.
-## Rifle-local axes: -Z is forward (muzzle), +Y up. The barrel axis sits at y = BARREL_Y so that the
-## sight tops line up at the ADS height of WeaponHolder (ADS offset y = -SIGHT_Y).
+## Rifle-local axes: -Z is forward (muzzle), +Y up; the scope axis sets the ADS pose of WeaponHolder.
 
 const WOOD_DIR: String = "res://assets/textures/dark_wood/dark_wood_%s_1k.jpg"
 const METAL_DIR: String = "res://assets/textures/rusty_metal_02/rusty_metal_02_%s_1k.jpg"
@@ -11,10 +10,16 @@ const PAINT_DIR: String = "res://assets/textures/painted_metal_shutter/painted_m
 
 ## Viewmodel meshes sit on render layer 2 so a cold fill light can target only them.
 const VIEWMODEL_LAYER: int = 2
-const BARREL_Y: float = 0.085
-const SIGHT_Y: float = 0.105
-## No rifle geometry may sit behind this local z (camera near plane at full ADS + kick + bob, see WeaponHolder).
-const REAR_LIMIT: float = 0.16
+const RIFLE_MODEL: String = "res://assets/models/bolt_action_rifle_7_62/bolt_action_rifle_7_62_2k.gltf"
+const RIFLE_TINT: Color = Color(0.42, 0.42, 0.44)   ## the Poly Haven wood is bright orange: dim it for the storm
+const BARREL_Y: float = 0.05
+const BOLT_Z: float = 0.237      ## bolt pivot behind the origin (model x = -0.237)
+const MUZZLE_Z: float = 0.60
+const SCOPE_X: float = 0.0     ## the scope axis sits this far right of the barrel axis
+const SCOPE_Y: float = 0.085
+const LEFT_ARM_OFFSET: Vector3 = Vector3(0.0, -0.02, 0.12)
+const RIGHT_HAND_OFFSET: Vector3 = Vector3(0.0, -0.04, 0.28)
+const SCOPE_REAR_Z: float = 0.26 ## rear end of the scope tube (the eye sits behind it, see WeaponHolder.ads_pos)
 
 
 ## Textured material; triplanar in object space so boxes, cylinders and spheres all get wear.
@@ -133,82 +138,62 @@ static func _sphere(radius: float) -> SphereMesh:
 	return s
 
 
-## Returns the rifle root. Named children the Rifle script animates: "Bolt" (handle group) and
-## "Muzzle" (Marker3D at the barrel tip).
+## Returns the rifle root (Poly Haven "Bolt Action Rifle 7.62", CC0, real scale: 1.23 m). The glTF is modelled
+## along +X (muzzle) / +Y up / +Z right; it is turned so the muzzle points to -Z. Rifle-local axes: -Z is
+## forward, +Y up, +X right; the barrel axis is at y = BARREL_Y, x = 0 and the scope axis is
+## (SCOPE_X, SCOPE_Y). Named children the Rifle script animates: "Bolt" (pivot on the bore axis, so
+## rotation.z lifts the handle and +z draws it back) and "Muzzle" (Marker3D at the barrel tip).
 static func rifle() -> Node3D:
 	var root: Node3D = Node3D.new()
 	root.name = "RifleModel"
-	var wood: StandardMaterial3D = wood_material()
-	var metal: StandardMaterial3D = metal_material()
-	var leather: StandardMaterial3D = leather_material()
-
-	# Everything behind local z = REAR_LIMIT is forbidden: at full ADS + kick_back + walk bob the camera near
-	# plane sits around z 0.2, so the stock is a short block and the wrist ends before the limit.
-	# Wood: butt, wrist, fore-end.
-	_part(root, "Butt", _box(Vector3(0.045, 0.11, 0.06)), wood, Vector3(0.0, 0.03, 0.115), Vector3(-8.0, 0.0, 0.0))
-	var wrist: MeshInstance3D = _part(root, "Wrist", _capsule(0.021, 0.21), wood, Vector3(0.0, 0.055, 0.05), Vector3(90.0, 0.0, 0.0))
-	wrist.scale = Vector3(1.0, 1.0, 1.7)   # capsule axis is local Y -> stretch into a 0.04 x 0.07 section
-	var fore: MeshInstance3D = _part(root, "Foreend", _capsule(0.021, 0.38), wood, Vector3(0.0, 0.064, -0.17), Vector3(90.0, 0.0, 0.0))
-	fore.scale = Vector3(1.0, 1.0, 1.15)
-	# Iron: round bolt-action receiver (a single cylinder along Z), barrel, sights.
-	_part(root, "Receiver", _cyl(0.022, 0.16, 24), metal, Vector3(0.0, 0.064, 0.08), Vector3(90.0, 0.0, 0.0))
-	_part(root, "Barrel", _cyl(0.011, 0.62), metal, Vector3(0.0, BARREL_Y, -0.31), Vector3(90.0, 0.0, 0.0))
-	_part(root, "Muzzle_Crown", _cyl(0.0135, 0.02), metal, Vector3(0.0, BARREL_Y, -0.62), Vector3(90.0, 0.0, 0.0))
-	_part(root, "FrontSight", _box(Vector3(0.004, 0.012, 0.01)), metal, Vector3(0.0, SIGHT_Y - 0.006, -0.60))
-	# Thin protective hood ring round the front blade (torus axis rotated onto Z).
-	var hood: TorusMesh = TorusMesh.new()
-	hood.inner_radius = 0.011
-	hood.outer_radius = 0.0133
-	hood.rings = 20
-	hood.ring_segments = 6
-	_part(root, "FrontHood", hood, metal, Vector3(0.0, SIGHT_Y - 0.006, -0.60), Vector3(90.0, 0.0, 0.0))
-	# Rear sight: a base plate with two posts and an open U-notch at x = 0, lined up with the front blade.
-	_part(root, "RearBase", _box(Vector3(0.03, 0.006, 0.02)), metal, Vector3(0.0, SIGHT_Y - 0.014, -0.02))
-	_part(root, "RearPostL", _box(Vector3(0.008, 0.02, 0.014)), metal, Vector3(-0.0095, SIGHT_Y + 0.001, -0.02))
-	_part(root, "RearPostR", _box(Vector3(0.008, 0.02, 0.014)), metal, Vector3(0.0095, SIGHT_Y + 0.001, -0.02))
-	# Trigger group.
-	var guard: TorusMesh = TorusMesh.new()
-	guard.inner_radius = 0.016
-	guard.outer_radius = 0.022
-	guard.rings = 16
-	guard.ring_segments = 8
-	_part(root, "TriggerGuard", guard, metal, Vector3(0.0, 0.025, 0.11), Vector3(0.0, 0.0, 90.0))
-	_part(root, "Trigger", _box(Vector3(0.006, 0.02, 0.006)), metal, Vector3(0.0, 0.035, 0.11))
-	# Floorplate / magazine well: fills the whole gap from the receiver's underside down to the plate.
-	_part(root, "Floorplate", _box(Vector3(0.03, 0.036, 0.08)), metal, Vector3(0.0, 0.028, 0.04))
-	# Bolt handle (animated): pivots about the bolt axis at the receiver's right side.
+	var packed: PackedScene = load(RIFLE_MODEL) as PackedScene
+	var gun: Node3D = packed.instantiate() as Node3D
+	gun.name = "Gun"
+	gun.rotation_degrees = Vector3(0.0, 90.0, 0.0)
+	root.add_child(gun)
+	# The two bolt meshes move together about the bolt axis (model x = -0.237, y = 0.0507).
 	var bolt: Node3D = Node3D.new()
 	bolt.name = "Bolt"
-	bolt.position = Vector3(0.018, 0.075, 0.06)
+	bolt.position = Vector3(0.0, BARREL_Y, BOLT_Z)
 	root.add_child(bolt)
-	_part(bolt, "Stem", _cyl(0.006, 0.07, 10), metal, Vector3(0.035, 0.0, 0.0), Vector3(0.0, 0.0, 90.0))
-	_part(bolt, "Knob", _sphere(0.012), metal, Vector3(0.075, 0.0, 0.0))
-	# Sling swivels and a slack leather sling.
-	var swivel: TorusMesh = TorusMesh.new()
-	swivel.inner_radius = 0.006
-	swivel.outer_radius = 0.01
-	swivel.rings = 12
-	swivel.ring_segments = 6
-	var front_sw: Vector3 = Vector3(0.0, 0.04, -0.32)
-	var rear_sw: Vector3 = Vector3(0.0, 0.03, 0.14)
-	_part(root, "SwivelFront", swivel, metal, front_sw, Vector3(0.0, 90.0, 0.0))
-	_part(root, "SwivelRear", swivel, metal, rear_sw, Vector3(0.0, 90.0, 0.0))
-	var segs: int = 8
-	var prev: Vector3 = front_sw
-	for i: int in range(1, segs + 1):
-		var f: float = float(i) / segs
-		var p: Vector3 = front_sw.lerp(rear_sw, f)
-		p.y -= 0.05 * sin(PI * f)     # slack droop (hugs the stock)
-		p.x = 0.0
-		var d: Vector3 = p - prev
-		var seg: MeshInstance3D = _part(root, "Sling%d" % i, _box(Vector3(0.025, 0.004, d.length() + 0.004)), leather, (prev + p) * 0.5)
-		seg.basis = Basis.looking_at(d.normalized(), Vector3.UP)
-		prev = p
+	var bolt_mesh: Node3D = Node3D.new()
+	bolt_mesh.name = "BoltMesh"
+	bolt_mesh.rotation_degrees = Vector3(0.0, 90.0, 0.0)
+	bolt.add_child(bolt_mesh)
+	for part: String in ["bolt_action_rifle_7_62_bolt_a", "bolt_action_rifle_7_62_bolt_b"]:
+		var n: Node3D = gun.get_node(part) as Node3D
+		gun.remove_child(n)
+		bolt_mesh.add_child(n)
+		n.position = Vector3.ZERO
+	gun.get_node("bolt_action_rifle_7_62_bullet_54mm").queue_free()   # loose cartridge floating under the magazine
+	_dress(root)
 	var muzzle: Marker3D = Marker3D.new()
 	muzzle.name = "Muzzle"
-	muzzle.position = Vector3(0.0, BARREL_Y, -0.64)
+	muzzle.position = Vector3(0.0, BARREL_Y, -MUZZLE_Z)
 	root.add_child(muzzle)
 	return root
+
+
+## Viewmodel layer, no shadows, and storm-dark materials (the albedo is dimmed and the clear scope glass is
+## kept see-through so the sight picture is never blocked).
+static func _dress(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mi: MeshInstance3D = node as MeshInstance3D
+		mi.layers = VIEWMODEL_LAYER
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for i: int in mi.mesh.get_surface_count():
+			var src: BaseMaterial3D = mi.mesh.surface_get_material(i) as BaseMaterial3D
+			if src == null:
+				continue
+			var m: BaseMaterial3D = src.duplicate() as BaseMaterial3D
+			if String(src.resource_name).ends_with("glass"):
+				m.albedo_color = Color(0.05, 0.07, 0.08, 0.12)
+				m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			else:
+				m.albedo_color = RIFLE_TINT
+			mi.set_surface_override_material(i, m)
+	for c: Node in node.get_children():
+		_dress(c)
 
 
 ## Left arm gripping the rifle fore-end (rifle-local).
@@ -217,6 +202,7 @@ static func rifle_left_arm() -> Node3D:
 	root.name = "LeftArm"
 	var glove: StandardMaterial3D = glove_material()
 	var sleeve: StandardMaterial3D = sleeve_material()
+	root.position = LEFT_ARM_OFFSET   # authored for the old fore-end; shifted onto the real hand guard
 	# Rounded glove wrapped round the front of the fore-end (z -0.34): palm underneath, three finger capsules
 	# curling up its left side and over the top, thumb along the right of the top.
 	_limb(root, "Palm", 0.02, Vector3(-0.026, 0.034, -0.34), Vector3(0.026, 0.034, -0.34), glove)
@@ -236,6 +222,7 @@ static func rifle_right_hand() -> Node3D:
 	root.name = "RightHand"
 	var glove: StandardMaterial3D = glove_material()
 	var sleeve: StandardMaterial3D = sleeve_material()
+	root.position = RIGHT_HAND_OFFSET   # authored for the old wrist; shifted onto the real stock wrist
 	_limb(root, "Grip", 0.025, Vector3(0.0, 0.01, 0.115), Vector3(0.0, 0.04, 0.115), glove)
 	_limb(root, "Knuckles", 0.011, Vector3(-0.018, 0.062, 0.12), Vector3(0.018, 0.062, 0.12), glove)
 	_limb(root, "Thumb", 0.008, Vector3(-0.03, 0.056, 0.10), Vector3(-0.026, 0.062, 0.125), glove)

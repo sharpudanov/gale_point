@@ -249,6 +249,25 @@ func kill_thud(seconds: float = 0.5) -> AudioStreamWAV:
 	return _to_wav(out, n, false)
 
 
+## Dark-hit deflect: a dull, hollow metallic "tonk" - two inharmonic sine partials (230 / 610 Hz, the upper one
+## decaying fast) under a short lowpassed noise tick, 0.28 s. Deliberately not the sharp rifle crack.
+func dark_deflect(seconds: float = 0.28) -> AudioStreamWAV:
+	var n: int = int(seconds * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	var tick_lp: float = 0.0
+	var a: float = _lp_coef(1800.0)
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var low: float = sin(TAU * 230.0 * t) * exp(-t * 16.0)
+		var mid: float = sin(TAU * 610.0 * t + 0.6) * exp(-t * 38.0) * 0.55
+		var w: float = _white()
+		tick_lp += a * (w - tick_lp)
+		var tick: float = tick_lp * 1.6 * exp(-t / 0.012)
+		out[i] = (low * 0.8 + mid + tick * 0.5) * minf(1.0, t * 600.0) * clampf((seconds - t) / 0.05, 0.0, 1.0)
+	return _to_wav(out, n, false)
+
+
 ## Moan variants (SPEC 4.13): a saw at 90-140 Hz with a slow pitch glide, 5 Hz vibrato, two formant
 ## bandpasses (500 / 1500 Hz) and breath noise, 1.8-3.2 s.
 func moan(variant: int) -> AudioStreamWAV:

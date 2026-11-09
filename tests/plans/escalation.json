@@ -1,0 +1,10 @@
+[
+  {"f": 600,  "expect": "storm.fog_density<=0.010"},
+  {"f": 600,  "expect": "storm.intensity<=0.3"},
+  {"f": 600,  "expect": "storm.rain_ratio<=0.55"},
+  {"f": 2700, "expect": "storm.fog_density>=0.022"},
+  {"f": 2700, "expect": "storm.wave_scale>=1.15"},
+  {"f": 2700, "expect": "storm.intensity>=0.8"},
+  {"f": 2700, "expect": "storm.lightning_count>=2"},
+  {"f": 3700, "expect": "time.phase==dawn"}
+]

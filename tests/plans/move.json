@@ -1,0 +1,11 @@
+[
+  {"f": 0,   "key": "W", "hold": 180},
+  {"f": 30,  "key": "Space", "hold": 10},
+  {"f": 36,  "expect": "player.on_floor==true"},
+  {"f": 100, "expect": "player.speed>=3.0"},
+  {"f": 100, "expect": "player.sprinting==false"},
+  {"f": 120, "key": "Shift", "hold": 60},
+  {"f": 170, "expect": "player.speed>=5.0"},
+  {"f": 170, "expect": "player.sprinting==true"},
+  {"f": 200, "to": 260, "mouse_motion": [5, 0]}
+]

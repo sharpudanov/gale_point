@@ -1,7 +1,7 @@
 # Gale Point: Night Watch — Specification
 
 > Source of truth for design decisions. Code follows this file; change this file first.
-> Status: **spec complete, M1 not started.** All numbers are starting values: tune them through
+> Status: **M1 done** (island, sea, storm, walk). M2 next. All numbers are starting values: tune them through
 > the listed `@export`s, then update this file when a value changes for good.
 
 ---
@@ -930,4 +930,55 @@ flat lighting, cluttered HUD.
 ## 14. Leftovers / open issues
 _(Filled per milestone: unresolved art-director points after 3 rounds, tuned values that differ
 from this spec, chosen asset slugs.)_
-- none yet
+
+### M1: chosen asset slugs (Poly Haven, CC0; also in `ASSETS.md`)
+| # | Slug | Res | Used by |
+|---|---|---|---|
+| 1 | `overcast_soil_puresky` | 2k | `sky_storm.storm_hdri` (night) |
+| 2 | `kloppenheim_01_puresky` | 2k | `sky_storm.dawn_hdri` |
+| 3 | `dark_rock_02` | 2k | `wet_rock` terrain |
+| 4 | `plastered_wall` | 2k | tower |
+| 5 | `stone_block_wall` | 1k | plinth, interior floor |
+| 11 | `boulder_01`, `rock_09`, `rock_07` | 1k | island rock scatter |
+
+Notes: no single-rock *coastal* model exists on Poly Haven (the `coast_rocks_*` sets are 19–37 MB
+clusters), so #11 uses generic rocks. Alternative night HDRI if needed: `kloofendal_overcast_puresky`.
+
+### M1: values changed during tuning (code is authoritative; §4–§6 tables list the starting values)
+| Where | Value | Spec → tuned | Why |
+|---|---|---|---|
+| `MoodRig.vfog_anisotropy` | vol. fog anisotropy | 0.6 → **0.25** | the player watches the beam from behind its source; forward scatter hid the shaft |
+| `MoodRig.fog_sky_affect` | depth fog on sky | 0.35 → **0.5** | softer sky/sea seam |
+| `StormDirector.vfog` | calm vol. fog | 0.008 → **0.0085** | slightly stronger shaft; still ≤ 0.010 at f600 (escalation) |
+| `StormDirector.foam_threshold` | calm/peak/dawn | 0.22/0.38/0.17 → **0.24/0.22/0.18** | the threshold now acts on noise-modulated crest values; peak foam must read through the mist |
+| `StormDirector.sun_energy` | calm/peak | 0.75/0.45 → **0.9/1.0** | storm_peak was crushed |
+| `StormDirector.ambient_energy` | calm/peak | 0.85/0.70 → **1.0/1.3** | same; keeps rock above pure black |
+| `StormDirector.exposure` | peak/dawn | 0.9/0.9 → **1.05/0.85** | peak readability; dawn sky not clipping |
+| `StormDirector.hdri_energy` | peak | 0.14 → **0.3** | readable horizon at peak |
+| `StormDirector.sky_desaturate` | dawn | 0.35 → **0.5** | kills a faint pink cast in the dawn HDRI |
+| `StormDirector.sky_reflect_peak` | | (0.20,0.22,0.26) → **(0.30,0.33,0.39)** | sea body visible at peak |
+| `StormDirector.ocean_roughness` | dawn | 0.06 → **0.09** | dawn sea read as flat milk |
+| `ocean.gdshader` | `deep_color` | (0.022,0.032,0.040) → **(0.032,0.045,0.055)** | troughs never black |
+| `ocean.gdshader` | new `lace_stretch` 0.25 + wind-stretched second foam sample | — | caps tear into wind streaks instead of solid blobs |
+| `ocean.gdshader` / `Ocean.edge_fade` | waves flatten at abs(x), abs(z) from 150 to 196 m; flat 2.4 km "skirt" ring beyond the 400 m plane | — | horizon slits where the displaced plane edge met the far sea |
+| `wet_rock.gdshader` | `darken` / `wet_roughness` / `puddle_roughness` | 0.42/0.22/0.05 → **0.55/0.32/0.10** | crushed blacks; rock highlights brighter than foam |
+| `post_film.gdshader` | `black_lift` | (0.010,0.012,0.016) → **(0.018,0.021,0.028)** | no pure-black areas > 5% |
+| `StormWeather` rain | fall speed / alpha / quad width / near fade | 20 / 0.28 / 0.015 / none → **14 / 0.16 / 0.012 / 1.5–5 m** | rain must read angled; fat near-lens streaks looked like artefacts |
+| `sky_storm.gdshader` | below horizon | dark band → **horizon haze continued** | the camera far plane (600 m) exposed the below-horizon colour as a dark strip |
+| `Lighthouse` plaster | `normal_scale` | 1.0 → **0.6** | 2k normals aliased into grain at range |
+
+Implementation notes: Rain is not reparented to the camera. It is a `top_level` node that follows the
+player's position, so the emitter never rotates with the view. The top metre of the tower, the gallery,
+the railing and the lantern room don't cast shadows, because the beam rotates inside them (they would
+cut its lower cone). Shot presets set `Player.input_locked`, so real mouse movement over the capture
+window can't move the camera.
+
+### M1: art-director leftovers after 3 rounds (all §12 checks pass; (b) is borderline)
+- Horizon: a thin, slightly darker seam still separates the sky and sea in every preset. The sea far field could fade further into the fog colour.
+- calm: the beam's sea hotspot (63–150 m band) has a hard horizontal edge at the horizon. This is spec'd behaviour, but it could get a distance falloff.
+- dawn and the lightning flash read as fairly flat grey (no focal point). Ideas: a vertical sky gradient at dawn, dimming the dawn sea albedo by about 10%.
+- The left foreground rock in calm and storm_peak is very dark (measured 0.0–1.3% pixels below 14/255). It could take a little more fill.
+- storm_peak crest foam is sparse at mid range under the dense peak mist.
+- Harness: on this machine `tools/capture.sh` sometimes stalls (the remaining frames are byte-identical copies). Check with `md5sum .captures/<p>/*.png | sort -u | wc -l` and re-run.
+- `tools/sim.sh` prints at most 80 lines (`SIM_MAX_LINES`). With `--every=60` on long runs the SIM_RESULT line falls off; check `.captures/sim/last.log` or the exit code.
+

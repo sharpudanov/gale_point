@@ -15,11 +15,11 @@ const RIFLE_TINT: Color = Color(0.42, 0.42, 0.44)   ## the Poly Haven wood is br
 const BARREL_Y: float = 0.05
 const BOLT_Z: float = 0.237      ## bolt pivot behind the origin (model x = -0.237)
 const MUZZLE_Z: float = 0.60
-const SCOPE_X: float = 0.0     ## the scope axis sits this far right of the barrel axis
-const SCOPE_Y: float = 0.085
-const LEFT_ARM_OFFSET: Vector3 = Vector3(0.0, -0.02, 0.12)
-const RIGHT_HAND_OFFSET: Vector3 = Vector3(0.0, -0.04, 0.28)
-const SCOPE_REAR_Z: float = 0.26 ## rear end of the scope tube (the eye sits behind it, see WeaponHolder.ads_pos)
+const SIGHT_Y: float = 0.074      ## eye height for ADS: level with the front sight tip, just over the receiver
+const FRONT_TIP_Z: float = 0.588 ## muzzle-end front sight post (tip at y 0.072)
+const BOLT_B_TUCK: float = 0.045    ## model-x shift of the bolt body's rear half (toward the muzzle)
+const FRONT_TIP_COLOR: Color = Color(1.0, 0.86, 0.62)
+const EYE_Z: float = 0.52        ## ADS eye distance behind the rifle origin (over the wrist, well behind the bolt)
 
 
 ## Textured material; triplanar in object space so boxes, cylinders and spheres all get wear.
@@ -140,8 +140,8 @@ static func _sphere(radius: float) -> SphereMesh:
 
 ## Returns the rifle root (Poly Haven "Bolt Action Rifle 7.62", CC0, real scale: 1.23 m). The glTF is modelled
 ## along +X (muzzle) / +Y up / +Z right; it is turned so the muzzle points to -Z. Rifle-local axes: -Z is
-## forward, +Y up, +X right; the barrel axis is at y = BARREL_Y, x = 0 and the scope axis is
-## (SCOPE_X, SCOPE_Y). Named children the Rifle script animates: "Bolt" (pivot on the bore axis, so
+## forward, +Y up, +X right; the barrel axis is at y = BARREL_Y, x = 0. The scope and its mount are removed:
+## ADS looks over the open iron sights from (0, SIGHT_Y, EYE_Z). Named children the Rifle script animates: "Bolt" (pivot on the bore axis, so
 ## rotation.z lifts the handle and +z draws it back) and "Muzzle" (Marker3D at the barrel tip).
 static func rifle() -> Node3D:
 	var root: Node3D = Node3D.new()
@@ -166,7 +166,32 @@ static func rifle() -> Node3D:
 		bolt_mesh.add_child(n)
 		n.position = Vector3.ZERO
 	gun.get_node("bolt_action_rifle_7_62_bullet_54mm").queue_free()   # loose cartridge floating under the magazine
+	# Open iron sights only: drop the scope and its mount, and tuck the bolt body's rear end forward so it does not
+	# fill the bottom of the ADS picture.
+	for n: Node in gun.get_children():
+		if String(n.name).contains("scope"):
+			n.queue_free()
+	(bolt_mesh.get_node("bolt_action_rifle_7_62_bolt_b") as Node3D).position = Vector3(BOLT_B_TUCK, 0.0, 0.0)
 	_dress(root)
+	# A tiny warm ivory dot on top of the front sight post, so the muzzle end is readable in the dark.
+	var tip: MeshInstance3D = MeshInstance3D.new()
+	tip.name = "FrontTip"
+	var tip_mesh: SphereMesh = SphereMesh.new()
+	tip_mesh.radius = 0.0016
+	tip_mesh.height = 0.0032
+	tip_mesh.radial_segments = 8
+	tip_mesh.rings = 4
+	tip.mesh = tip_mesh
+	var tip_mat: StandardMaterial3D = StandardMaterial3D.new()
+	tip_mat.albedo_color = FRONT_TIP_COLOR
+	tip_mat.emission_enabled = true
+	tip_mat.emission = FRONT_TIP_COLOR
+	tip_mat.emission_energy_multiplier = 1.2
+	tip.material_override = tip_mat
+	tip.position = Vector3(0.0, 0.0725, -FRONT_TIP_Z)
+	tip.layers = VIEWMODEL_LAYER
+	tip.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(tip)
 	var muzzle: Marker3D = Marker3D.new()
 	muzzle.name = "Muzzle"
 	muzzle.position = Vector3(0.0, BARREL_Y, -MUZZLE_Z)
@@ -174,8 +199,7 @@ static func rifle() -> Node3D:
 	return root
 
 
-## Viewmodel layer, no shadows, and storm-dark materials (the albedo is dimmed and the clear scope glass is
-## kept see-through so the sight picture is never blocked).
+## Viewmodel layer, no shadows, and storm-dark materials (the albedo is dimmed).
 static func _dress(node: Node) -> void:
 	if node is MeshInstance3D:
 		var mi: MeshInstance3D = node as MeshInstance3D
@@ -186,49 +210,10 @@ static func _dress(node: Node) -> void:
 			if src == null:
 				continue
 			var m: BaseMaterial3D = src.duplicate() as BaseMaterial3D
-			if String(src.resource_name).ends_with("glass"):
-				m.albedo_color = Color(0.05, 0.07, 0.08, 0.12)
-				m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			else:
-				m.albedo_color = RIFLE_TINT
+			m.albedo_color = RIFLE_TINT
 			mi.set_surface_override_material(i, m)
 	for c: Node in node.get_children():
 		_dress(c)
-
-
-## Left arm gripping the rifle fore-end (rifle-local).
-static func rifle_left_arm() -> Node3D:
-	var root: Node3D = Node3D.new()
-	root.name = "LeftArm"
-	var glove: StandardMaterial3D = glove_material()
-	var sleeve: StandardMaterial3D = sleeve_material()
-	root.position = LEFT_ARM_OFFSET   # authored for the old fore-end; shifted onto the real hand guard
-	# Rounded glove wrapped round the front of the fore-end (z -0.34): palm underneath, three finger capsules
-	# curling up its left side and over the top, thumb along the right of the top.
-	_limb(root, "Palm", 0.02, Vector3(-0.026, 0.034, -0.34), Vector3(0.026, 0.034, -0.34), glove)
-	for i: int in range(3):
-		var z: float = -0.31 - 0.03 * i
-		_limb(root, "Finger%d" % i, 0.0095, Vector3(-0.031, 0.036, z), Vector3(-0.034, 0.066, z), glove)
-		_limb(root, "FingerTip%d" % i, 0.0085, Vector3(-0.032, 0.07, z), Vector3(-0.014, 0.086, z), glove)
-	_limb(root, "Thumb", 0.009, Vector3(0.022, 0.082, -0.31), Vector3(0.018, 0.084, -0.37), glove)
-	# Forearm: leaves the wrist low and to the left, dropping out of the bottom-left of the frame.
-	_limb(root, "Sleeve", 0.03, Vector3(-0.035, 0.0, -0.30), Vector3(-0.10, -0.40, -0.30), sleeve)
-	return root
-
-
-## Right hand around the rifle wrist, with its sleeve running down and out of frame.
-static func rifle_right_hand() -> Node3D:
-	var root: Node3D = Node3D.new()
-	root.name = "RightHand"
-	var glove: StandardMaterial3D = glove_material()
-	var sleeve: StandardMaterial3D = sleeve_material()
-	root.position = RIGHT_HAND_OFFSET   # authored for the old wrist; shifted onto the real stock wrist
-	_limb(root, "Grip", 0.025, Vector3(0.0, 0.01, 0.115), Vector3(0.0, 0.04, 0.115), glove)
-	_limb(root, "Knuckles", 0.011, Vector3(-0.018, 0.062, 0.12), Vector3(0.018, 0.062, 0.12), glove)
-	_limb(root, "Thumb", 0.008, Vector3(-0.03, 0.056, 0.10), Vector3(-0.026, 0.062, 0.125), glove)
-	_limb(root, "Finger", 0.006, Vector3(0.0, 0.042, 0.075), Vector3(0.0, 0.042, 0.095), glove)
-	_limb(root, "Sleeve", 0.035, Vector3(0.02, -0.03, 0.115), Vector3(0.10, -0.30, 0.13), sleeve)
-	return root
 
 
 ## Break-action flare gun. Named children: "Barrels" (pivot that tips down to break open), "Hammer",

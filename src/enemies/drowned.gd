@@ -26,7 +26,7 @@ extends Node3D
 @export var trail_step: float = 0.9
 @export var moan_first: Vector2 = Vector2(0.0, 3.0)
 @export var moan_interval: Vector2 = Vector2(6.0, 14.0)
-@export var chest_height: float = 1.4
+@export var chest_height: float = 1.35
 @export_group("Light reaction")
 @export var lit_shudder_amp: float = 0.02
 @export var lit_shudder_hz: float = 14.0
@@ -36,6 +36,10 @@ extends Node3D
 @export var drag_factor: float = 0.12
 @export var drip_rate: float = 12.0
 @export var frozen_drag_speed: float = 0.7   ## fraction of base_speed the hem trails by while frozen
+@export_group("Dark hits")
+@export var dark_hit_damage: float = 35.0     ## live play: a rifle hit on an unlit Drowned still hurts (3 shots)...
+@export var dark_knockback: float = 1.4       ## ...and shoves it back this far (metres, over knock_time)
+@export var knock_time: float = 0.25
 @export_group("Hitbox")
 @export var hitbox_radius: float = 0.58
 @export var hitbox_height: float = 2.15
@@ -68,6 +72,7 @@ var _drips: GPUParticles3D
 var _steam: GPUParticles3D
 var _glow_mats: Array[StandardMaterial3D] = []
 var _glow_is_eye: Array[bool] = []
+var _knock: Vector3 = Vector3.ZERO   ## remaining knockback displacement (m)
 var _sear: float = 0.0   ## 0..1 smoothed "searing in the light" amount
 var _age: float = 0.0
 var _state_t: float = 0.0
@@ -106,7 +111,7 @@ func _ready() -> void:
 		if mi is MeshInstance3D:
 			(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	_build_glow_materials()
-	# The hitbox rides on _body, so it follows the emerge, bob, shudder and lean of the visible cloak.
+	# Hitbox on the root (the rifle also runs an exact geometric test against the visual centre).
 	_hitbox = Area3D.new()
 	_hitbox.name = "Hitbox"
 	_hitbox.collision_layer = 4   # layer 3: enemy hitboxes
@@ -126,7 +131,7 @@ func _ready() -> void:
 	shoulders.shape = box
 	shoulders.position.y = shoulder_y
 	_hitbox.add_child(shoulders)
-	_body.add_child(_hitbox)
+	add_child(_hitbox)   # on the root, not _body: _body is animated every frame and would lag the physics broadphase
 	_build_drips()
 	_build_steam()
 	rotation.y = _heading
@@ -157,6 +162,11 @@ func telemetry() -> Dictionary:
 	}
 
 
+## Offset of the animated visual body from the root (bob, shudder); the rifle's hit cylinder is centred on it.
+func body_offset() -> Vector3:
+	return _body.position if _body != null else Vector3.ZERO
+
+
 ## Whether a rifle hit hurts. `shootable` is LightField's verdict for the hit point itself; a lit Drowned (its
 ## chest is in light) is also hurt when the shot lands on the lower cloak or the back, where the ground can
 ## occlude a flare's light.
@@ -178,6 +188,18 @@ func on_rifle_hit(point: Vector3, dir: Vector3, shootable: bool, damage: float) 
 	else:
 		_shudder_left = dark_hit_shudder_time
 		HitFx.dark_mist(_hub, point, dir)
+		if not _hub.freeze:
+			# Live play: darkness is not full immunity. Light is still the 3x multiplier (one shot kills in
+			# light), but three shots in the dark kill too, and each one shoves the Drowned back.
+			hp -= dark_hit_damage
+			var flat: Vector3 = Vector3(dir.x, 0.0, dir.z)
+			if flat.length() > 0.001:
+				_knock = flat.normalized() * dark_knockback
+			if hp <= 0.0:
+				_die("rifle")
+				_hub.lethal_hit(point, dir)
+			else:
+				HitFx.lethal_splash(_hub, point, dir)
 
 
 # --- simulation -------------------------------------------------------------------------------
@@ -241,6 +263,10 @@ func _tick_glide(delta: float) -> void:
 	var step: Vector3 = _vel * delta
 	global_position.x += step.x
 	global_position.z += step.z
+	if _knock != Vector3.ZERO:
+		var left: Vector3 = _knock.move_toward(Vector3.ZERO, dark_knockback / maxf(knock_time, 0.01) * delta)
+		global_position += _knock - left
+		_knock = left
 	global_position.y = _surface(global_position.x, global_position.z) + hover_height
 	rotation.y = _heading
 	_trail(step.length())

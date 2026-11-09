@@ -85,7 +85,7 @@ func _build() -> void:
 	weapons = WeaponHolder.new()
 	weapons.name = "WeaponHolder"
 	player.camera.add_child(weapons)
-	weapons.setup(player, player.camera, projectiles, ocean, light_field, soundscape, weather)
+	weapons.setup(player, player.camera, projectiles, ocean, light_field, soundscape, weather, enemies)
 	weapons.fire_at = args.fire_at
 	weapons.force_ads = args.ads
 	player.weapons = weapons

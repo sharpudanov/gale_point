@@ -13,6 +13,13 @@ signal hit_marker(kind: String)
 @export var start_reserve: int = 10
 @export var max_reserve: int = 25
 @export var shot_range: float = 150.0
+@export_group("Hit test")
+@export var hit_radius: float = 0.75          ## generous vertical cylinder around each Drowned
+@export var hit_forgiveness_deg: float = 1.2  ## extra radius growing with range (tan of this angle * distance)
+@export var hit_bottom: float = -0.3          ## cylinder floor, relative to the Drowned's feet
+@export var hit_top: float = 2.35             ## cylinder ceiling
+@export var hit_world_slack: float = 0.4      ## an enemy up to this far behind the world hit still counts
+@export_group("")
 @export var damage_lit: float = 100.0
 @export var damage_dark: float = 0.0
 @export var spread_hip_deg: float = 1.5
@@ -34,7 +41,7 @@ signal hit_marker(kind: String)
 @export var recoil_yaw_deg: float = 1.5
 @export var shot_trauma: float = 0.12
 @export var kick_back: float = 0.12
-@export var kick_back_ads_scale: float = 0.2   ## ADS: the camera sits just behind the scope, so the rifle barely slides back
+@export var kick_back_ads_scale: float = 0.2   ## ADS: the camera sits just behind the bolt, so the rifle barely slides back
 @export var kick_rot_deg: float = 12.0
 @export var kick_spring: float = 18.0
 @export var kick_damping: float = 0.7
@@ -64,10 +71,10 @@ var reload_pose: float = 0.0
 var _camera: PlayerCamera
 var _player: Player
 var _field: LightField
+var _enemies: Enemies
 var _audio: Soundscape
 var _model: Node3D
 var _bolt: Node3D
-var _right_hand: Node3D
 var _muzzle: Marker3D
 var _bolt_base: Vector3
 var _cycle_t: float = 0.0
@@ -86,7 +93,8 @@ var _kick_v: float = 0.0
 var _bolt_open: float = 0.0       ## 0..1 visual bolt openness
 
 
-func setup(camera: PlayerCamera, player: Player, field: LightField, audio: Soundscape) -> void:
+func setup(camera: PlayerCamera, player: Player, field: LightField, audio: Soundscape, enemies: Enemies) -> void:
+	_enemies = enemies
 	_camera = camera
 	_player = player
 	_field = field
@@ -102,9 +110,6 @@ func _ready() -> void:
 	add_child(_model)
 	var gun: Node3D = ViewmodelBuilder.rifle()
 	_model.add_child(gun)
-	_model.add_child(ViewmodelBuilder.rifle_left_arm())
-	_right_hand = ViewmodelBuilder.rifle_right_hand()
-	_model.add_child(_right_hand)
 	_bolt = gun.get_node("Bolt") as Node3D
 	_bolt_base = _bolt.position
 	_muzzle = gun.get_node("Muzzle") as Marker3D
@@ -255,34 +260,93 @@ func _hitscan(ads: bool) -> void:
 	var rot: float = GameRng.randf() * TAU
 	var dir: Vector3 = (-cam_xf.basis.z).rotated(cam_xf.basis.x, ang * sin(rot)).rotated(cam_xf.basis.y, ang * cos(rot)).normalized()
 	var from: Vector3 = cam_xf.origin
-	var q: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, from + dir * shot_range, 1 | 4, [_player.get_rid()])
-	q.collide_with_areas = true
-	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(q)
-	if hit.is_empty():
-		return
-	var target: Node = hit["collider"] as Node
-	while target != null and not target.has_method("on_rifle_hit"):
-		target = target.get_parent()
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	# a) How far the world (terrain, rocks, lighthouse) lets the bullet travel.
+	var world_q: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, from + dir * shot_range, 1, [_player.get_rid()])
+	var world_hit: Dictionary = space.intersect_ray(world_q)
+	var world_dist: float = shot_range if world_hit.is_empty() else from.distance_to(world_hit["position"] as Vector3)
+	# b) Exact ray-vs-cylinder test against every living Drowned's current visual centre. It does not depend on
+	# the physics broadphase, which lags behind nodes that are moved and animated every frame.
+	var target: Drowned = null
+	var best: float = INF
+	if _enemies != null:
+		for d: Drowned in _enemies.living():
+			var t: float = ray_vs_drowned(from, dir, d)
+			if t >= 0.0 and t <= world_dist + hit_world_slack and t < best:
+				best = t
+				target = d
+	# The Area3D hitboxes agree with the geometry; keep them as a second opinion.
+	if target == null:
+		var area_q: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, from + dir * minf(shot_range, world_dist + hit_world_slack), 4, [_player.get_rid()])
+		area_q.collide_with_areas = true
+		area_q.collide_with_bodies = false
+		var area_hit: Dictionary = space.intersect_ray(area_q)
+		if not area_hit.is_empty():
+			var n: Node = area_hit["collider"] as Node
+			while n != null and not (n is Drowned):
+				n = n.get_parent()
+			if n != null and (n as Drowned).is_alive():
+				target = n as Drowned
+				best = from.distance_to(area_hit["position"] as Vector3)
 	if target == null:
 		return
-	var point: Vector3 = hit["position"]
+	var point: Vector3 = from + dir * best
 	var info: Dictionary = _field.query(point) if _field != null else {"shootable": false}
-	var shootable: bool = bool(info["shootable"])
-	# The target may widen the verdict (a lit Drowned is hurt anywhere on its body).
-	if target.has_method("hit_shootable"):
-		shootable = bool(target.call("hit_shootable", shootable))
-	var was_alive: bool = not target.has_method("is_alive") or bool(target.call("is_alive"))
+	var shootable: bool = target.hit_shootable(bool(info["shootable"]))
 	if shootable:
 		hits_lit += 1
 	else:
 		hits_dark += 1
-	target.call("on_rifle_hit", point, dir, shootable, damage_lit if shootable else damage_dark)
-	var killed: bool = was_alive and target.has_method("is_alive") and not bool(target.call("is_alive"))
-	if shootable:
-		hit_marker.emit("kill" if killed else "lit")
+	target.on_rifle_hit(point, dir, shootable, damage_lit if shootable else damage_dark)
+	if not target.is_alive():
+		hit_marker.emit("kill")
+	elif shootable:
+		hit_marker.emit("lit")
 	else:
-		_audio.play_deflect()
 		hit_marker.emit("dark")
+	if not shootable:
+		_audio.play_deflect()
+
+
+## Distance along the ray to the Drowned's hit cylinder (vertical axis through its visual centre, radius
+## hit_radius plus an angular forgiveness that grows with range), or -1 if the ray misses it.
+func ray_vs_drowned(from: Vector3, dir: Vector3, d: Drowned) -> float:
+	var centre: Vector3 = d.global_position + d.body_offset() + Vector3(0.0, 1.05, 0.0)
+	var y0: float = d.global_position.y + hit_bottom
+	var y1: float = d.global_position.y + hit_top
+	var to_c: Vector2 = Vector2(centre.x - from.x, centre.z - from.z)
+	var flat: Vector2 = Vector2(dir.x, dir.z)
+	var range_est: float = to_c.length()
+	var radius: float = hit_radius + tan(deg_to_rad(hit_forgiveness_deg)) * range_est
+	# Interval of t where the ray is inside the infinite cylinder (2D circle test in the XZ plane).
+	var lo: float = 0.0
+	var hi: float = shot_range
+	var a: float = flat.length_squared()
+	if a < 0.000001:
+		if to_c.length_squared() > radius * radius:
+			return -1.0
+	else:
+		var f: Vector2 = Vector2(from.x - centre.x, from.z - centre.z)
+		var b: float = f.dot(flat)
+		var c: float = f.length_squared() - radius * radius
+		var disc: float = b * b - a * c
+		if disc < 0.0:
+			return -1.0
+		var sq: float = sqrt(disc)
+		lo = maxf(lo, (-b - sq) / a)
+		hi = minf(hi, (-b + sq) / a)
+	# Clip to the y slab.
+	if absf(dir.y) < 0.000001:
+		if from.y < y0 or from.y > y1:
+			return -1.0
+	else:
+		var ta: float = (y0 - from.y) / dir.y
+		var tb: float = (y1 - from.y) / dir.y
+		lo = maxf(lo, minf(ta, tb))
+		hi = minf(hi, maxf(ta, tb))
+	if lo > hi:
+		return -1.0
+	return lo
 
 
 # --- visuals ----------------------------------------------------------------------------------
@@ -293,7 +357,6 @@ func _process(delta: float) -> void:
 	_kick_v += accel * delta
 	_kick += _kick_v * delta
 	var tilt: float = reload_pose
-	_right_hand.visible = ads_amount < 0.5   # in ADS the grip hand sits behind the camera
 	_model.position = Vector3(0.0, 0.0, kick_back * lerpf(1.0, kick_back_ads_scale, ads_amount) * _kick) + Vector3(-0.02, 0.01, 0.0) * tilt
 	_model.rotation_degrees = Vector3(kick_rot_deg * _kick + 14.0 * tilt, 0.0, -18.0 * tilt)
 

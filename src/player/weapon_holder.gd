@@ -8,7 +8,7 @@ signal ammo_changed
 
 @export var switch_time: float = 0.45
 @export var hip_pos: Vector3 = Vector3(0.16, -0.17, -0.44)
-@export var ads_pos: Vector3 = Vector3(-ViewmodelBuilder.SCOPE_X, -ViewmodelBuilder.SCOPE_Y, -(ViewmodelBuilder.SCOPE_REAR_Z + 0.15))   ## eye 15 cm behind the scope tube
+@export var ads_pos: Vector3 = Vector3(0.0, -ViewmodelBuilder.SIGHT_Y, -ViewmodelBuilder.EYE_Z)   ## open iron sights: eye on the barrel line, level with the front post
 @export var flare_hip_pos: Vector3 = Vector3(0.15, -0.17, -0.34)
 @export var hip_yaw_deg: float = 7.0
 @export var sway_breath_hz: float = 0.25
@@ -56,13 +56,13 @@ var _switch_latch: String = ""
 var _scripted_done: bool = false
 
 
-func setup(player: Player, camera: PlayerCamera, projectiles: Node3D, ocean: Ocean, field: LightField, audio: Soundscape, weather: StormWeather) -> void:
+func setup(player: Player, camera: PlayerCamera, projectiles: Node3D, ocean: Ocean, field: LightField, audio: Soundscape, weather: StormWeather, enemies: Enemies) -> void:
 	_player = player
 	_camera = camera
 	_audio = audio
 	rifle = Rifle.new()
 	rifle.name = "Rifle"
-	rifle.setup(camera, player, field, audio)
+	rifle.setup(camera, player, field, audio, enemies)
 	add_child(rifle)
 	flare_gun = FlareGun.new()
 	flare_gun.name = "FlareGun"

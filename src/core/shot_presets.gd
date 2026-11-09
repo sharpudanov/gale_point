@@ -9,6 +9,7 @@ const PRESETS: Dictionary = {
 	"lightning": "--night_t=200 --no_waves --flash_at=0.80 --player_at=0,7 --look=180,-3 --freeze_enemies --spawn_at=-8,32;-3,38;4,30;10,42;15,36",
 	"flare_fight": "--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-5 --place_flare=14 --spawn_at=-3,23;4,19;-13,28;11,30 --aim --fire_at=0.98",
 	"ads_aim": "--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-4 --place_flare=16 --spawn_at=0,21 --ads",
+	"ads_close": "--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --place_flare=10 --spawn_at=0,19 --freeze_enemies --ads",
 	"hit_lit": "--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-4 --freeze_enemies --place_flare=16 --spawn_at=0,18 --aim --fire_at=0.5",
 	"hit_dark": "--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-4 --freeze_enemies --spawn_at=0,18 --aim --fire_at=0.5",
 	"dawn": "--night_t=320 --no_waves --player_at=-6,-10 --look=270,2",

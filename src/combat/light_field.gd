@@ -7,7 +7,8 @@ extends Node3D
 
 @export var lit_threshold: float = 0.2
 @export var flare_radius: float = 15.5
-@export var flare_ray_height: float = 0.9   ## occlusion rays aim this far above a flare, so small bumps never block it
+@export var flare_ray_height: float = 1.1   ## occlusion rays aim this far above a flare...
+@export var flare_ray_lift: float = 1.2     ## ...and start this far above the queried point, so rock bumps never block a visibly lit enemy
 @export var flare_dps: float = 12.0
 @export var beam_dps: float = 20.0
 @export var beam_range: float = 160.0
@@ -64,7 +65,7 @@ func query(pos: Vector3) -> Dictionary:
 		var c: float = f.light_contribution(pos, flare_radius)
 		if c <= 0.0:
 			continue
-		if _occluded(pos, f.global_position + Vector3(0.0, flare_ray_height, 0.0)):
+		if _occluded(pos + Vector3(0.0, flare_ray_lift, 0.0), f.global_position + Vector3(0.0, flare_ray_height, 0.0)):
 			continue
 		total += c
 		dps = maxf(dps, flare_dps)

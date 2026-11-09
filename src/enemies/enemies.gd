@@ -73,6 +73,15 @@ func sink_all(duration: float) -> void:
 		d.dissolve_away(duration)
 
 
+## Every Drowned that is not dissolving (the rifle's geometric hit test walks this).
+func living() -> Array[Drowned]:
+	var out: Array[Drowned] = []
+	for d: Drowned in _list:
+		if d.is_alive():
+			out.append(d)
+	return out
+
+
 func first() -> Drowned:
 	return _list[0] if not _list.is_empty() else null
 

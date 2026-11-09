@@ -1,25 +1,13 @@
 class_name Reticle
 extends Control
-## Center reticle + diegetic hit markers (drawn by PostFx, which owns the state).
-## Hip: a crisp ivory dot with a dark outline and four short ticks with a gap. ADS: a fine dark-edged
-## crosshair with a warm amber pinpoint. Hit markers flash around the center: golden X-ticks for a lit hit or
-## kill, a cold slate-blue deflect ring for a hit on a Drowned in the dark (immune).
+## Hip: a tiny faint ivory dot, nothing else. ADS: nothing at all (the 3D front sight post, with its small warm
+## tip, is the aiming mark). Hit markers flash around the centre when a shot lands: golden X-ticks for a lit hit
+## or kill, a cold slate-blue deflect ring for a hit on a Drowned in the dark.
 
 @export_group("Hip")
-@export var dot_size: float = 3.0
-@export var dot_color: Color = Color(0.96, 0.93, 0.82)       ## pale ivory
-@export var outline_color: Color = Color(0.0, 0.0, 0.0, 0.85)
-@export var tick_gap: float = 9.0
-@export var tick_length: float = 7.0
-@export var tick_width: float = 2.0
-@export var tick_alpha: float = 0.8
-@export_group("ADS")
-@export var pin_size: float = 3.0
-@export var pin_color: Color = Color("#FFC27A")              ## warm amber center pinpoint
-@export var ads_gap: float = 7.0
-@export var ads_length: float = 34.0
-@export var ads_width: float = 1.0
-@export var ads_color: Color = Color(0.94, 0.92, 0.86, 0.95)
+@export var dot_size: float = 2.0
+@export var dot_color: Color = Color(0.96, 0.93, 0.82, 0.28)   ## pale ivory, faint: the film-still look comes first
+@export var outline_color: Color = Color(0.0, 0.0, 0.0, 0.85)  ## hit-marker legibility only
 @export_group("Hit markers")
 @export var lit_color: Color = Color("#FFB266")
 @export var dark_color: Color = Color(0.42, 0.52, 0.68)      ## cold slate blue
@@ -60,9 +48,7 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var c: Vector2 = (get_viewport_rect().size * 0.5).round()   # a Control under a CanvasLayer has no size of its own
-	if ads:
-		_draw_ads(c)
-	else:
+	if not ads:
 		_draw_hip(c)
 	if _lit_left > 0.0:
 		_draw_lit(c)
@@ -70,31 +56,9 @@ func _draw() -> void:
 		_draw_dark(c)
 
 
-func _bar(a: Vector2, b: Vector2, w: float, col: Color) -> void:
-	# A dark 1 px outline under the bar, then the bar itself.
-	draw_line(a, b, outline_color, w + 2.0, false)
-	draw_line(a, b, col, w, false)
-
-
 func _draw_hip(c: Vector2) -> void:
-	var col: Color = Color(dot_color.r, dot_color.g, dot_color.b, tick_alpha)
-	for d: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
-		_bar(c + d * tick_gap, c + d * (tick_gap + tick_length), tick_width, col)
-	var o: float = dot_size * 0.5 + 1.0
-	draw_rect(Rect2(c - Vector2(o, o), Vector2(o, o) * 2.0), outline_color)
 	var h: float = dot_size * 0.5
 	draw_rect(Rect2(c - Vector2(h, h), Vector2(h, h) * 2.0), dot_color)
-
-
-func _draw_ads(c: Vector2) -> void:
-	# Fine crosshair: four thin arms with a clear centre, a heavier post at the bottom, amber pin in the middle.
-	for d: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
-		_bar(c + d * ads_gap, c + d * (ads_gap + ads_length), ads_width, ads_color)
-	_bar(c + Vector2.DOWN * (ads_gap + ads_length), c + Vector2.DOWN * (ads_gap + ads_length + 26.0), ads_width + 2.0, ads_color)
-	var o: float = pin_size * 0.5 + 1.0
-	draw_rect(Rect2(c - Vector2(o, o), Vector2(o, o) * 2.0), outline_color)
-	var h: float = pin_size * 0.5
-	draw_rect(Rect2(c - Vector2(h, h), Vector2(h, h) * 2.0), pin_color)
 
 
 ## Four diagonal X-ticks that punch outward; a kill is bigger and thicker.

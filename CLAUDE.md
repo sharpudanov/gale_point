@@ -38,7 +38,12 @@
 2. **playtester** agent: logic check with a fitting input plan + expectations.
 3. **art-director** agent: visual check on the relevant shot presets. Apply its fixes;
    max 3 fix rounds, then move on and note leftovers in SPEC.md.
-4. `git commit` with a clear message.
+4. `git commit` with a clear message, then `git push` to `origin main` (GitHub:
+   `sharpudanov/gale_point`). Project is worked on from two machines (desktop + laptop):
+   start of a session = `git pull --ff-only`; end of a milestone = commit + push.
+   Never force-push or rewrite history without the user asking. Git identity is
+   `sharpu <uvaysbazaev1@gmail.com>`; don't change it.
+   Machine-specific `tools/env.sh` (Godot path) must not be committed from the laptop.
 
 ## Assets
 - Only via the **asset-fetcher** agent (Poly Haven CC0, 1k–2k, into `res://assets/<type>/<name>/`,

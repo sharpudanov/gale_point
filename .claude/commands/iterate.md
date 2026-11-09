@@ -44,6 +44,7 @@ shaders in `.gdshader`, hook must stay green) apply throughout.
 6. **Close out**
    - Update `DESIGN_LOG.md`: Learned Principles (only new, durable ones), Rejected Clichés,
      Shipped Changes (this iteration, with numbers), Next Horizon. Update SPEC.md where rules changed.
-   - `git commit` with a clear message (do not stage unrelated pre-existing changes).
+   - `git commit` with a clear message (do not stage unrelated pre-existing changes), then
+     `git push origin main` so the other machine can pull it.
    - STOP and reply with a short summary and a **"15-Second In-Game Test Recipe (F1-F4)"**: 4-6
      numbered steps a human can do right after launching the game.

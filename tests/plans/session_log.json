@@ -1,0 +1,4 @@
+[
+  {"f": 5, "key": "F3", "hold": 2},
+  {"f": 70, "expect": "session.changes==1"}
+]

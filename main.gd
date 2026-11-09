@@ -27,6 +27,7 @@ var fire: FireSystem
 var props: IslandProps
 var buoys: BellBuoys
 var sandbox: Sandbox
+var session: SessionLog
 var _placed_flare: Flare
 
 ## Screenshot hotkey output folder (gitignored via .captures/).
@@ -172,6 +173,13 @@ func _build() -> void:
 	player.died.connect(_on_player_died)
 	clock.won.connect(post_fx.on_won)
 
+	# Flight recorder for human playtests (harness): windowed normal play only, or forced by --session_log.
+	var windowed_play: bool = DisplayServer.get_name() != "headless" and not ShotPresets.has_preset(shot)
+	if args.session_log or windowed_play:
+		session = SessionLog.new()
+		session.source = get_telemetry
+		_add(session, "SessionLog")
+
 
 ## --pre_trails: wet smears from the shore up to a spawn point, as if it had already glided in.
 func _pre_trail(xz: Vector2) -> void:
@@ -230,6 +238,8 @@ func _take_screenshot() -> void:
 		push_warning("screenshot: could not write " + abs_path)
 		return
 	print("screenshot saved: ", abs_path)
+	if session != null:
+		session.mark(abs_path.get_file())
 	if OS.get_name() == "Windows":
 		# Detached process: the clipboard copy never stalls the frame.
 		var ps_path: String = abs_path.replace("/", "\\").replace("'", "''")
@@ -307,6 +317,8 @@ func get_telemetry() -> Dictionary:
 	t["buoys"] = buoys.telemetry()
 	if sandbox != null:
 		t["sandbox"] = sandbox.telemetry()
+	if session != null:
+		t["session"] = session.telemetry()
 	t["fx"] = post_fx.telemetry()
 	t["audio"] = soundscape.telemetry()
 	return t

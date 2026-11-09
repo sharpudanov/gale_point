@@ -34,6 +34,7 @@ var overdrive: bool = false          ## beam overdrive from frame 0 (operator = 
 var shove_at: float = -1.0           ## scripted rifle-butt shove at t seconds
 var aim_cask: int = -1               ## >= 0: --aim at this oil cask instead
 var toll: int = 0                    ## > 0: the buoy nearest the view tolls this many strokes at boot
+var session_log: bool = false        ## force the SessionLog recorder on (headless sims; writes sim_session.jsonl)
 
 
 static func parse(preset_defaults: Dictionary) -> DebugArgs:
@@ -107,6 +108,7 @@ static func parse(preset_defaults: Dictionary) -> DebugArgs:
 	v = get_v.call("toll")
 	if v != null:
 		d.toll = int(str(v))
+	d.session_log = get_v.call("session_log") != null
 	return d
 
 

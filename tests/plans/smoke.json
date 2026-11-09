@@ -1,0 +1,7 @@
+[
+  {"f": 0,  "to": 30, "mouse_motion": [6, -2]},
+  {"f": 10, "key": "W", "hold": 60},
+  {"f": 20, "key": "Space", "hold": 4},
+  {"f": 40, "mouse_button": "left", "hold": 3},
+  {"f": 90, "expect": "physics_frames>=90"}
+]

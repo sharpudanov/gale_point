@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(/c/Users/huhub/Tools/Godot/Godot_v4.7.2-stable_win64.exe *)",
+      "Bash(C:/Users/huhub/Tools/Godot/Godot_v4.7.2-stable_win64.exe *)",
+      "Bash(\"$GODOT\" *)",
+      "Bash(git *)",
+      "Bash(tools/*)",
+      "Bash(./tools/*)",
+      "Bash(bash tools/*)",
+      "Bash(bash ./tools/*)",
+      "Bash(source tools/env.sh*)",
+      "Bash(curl *https://api.polyhaven.com/*)",
+      "Bash(curl *https://dl.polyhaven.org/*)",
+      "Bash(curl *https://polyhaven.com/llms.txt*)",
+      "WebFetch(domain:polyhaven.com)",
+      "WebFetch(domain:api.polyhaven.com)"
+    ],
+    "deny": [
+      "Read(./.godot/**)",
+      "Read(**/*.import)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/godot_check.sh\"",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}

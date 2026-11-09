@@ -1,0 +1,17 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Godot-specific ignores (export artifacts)
+*.tmp
+export_credentials.cfg
+/build/
+
+# Harness
+.captures/
+.claude/settings.local.json
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp

@@ -11,6 +11,12 @@ cd "$PROJECT_ROOT" || exit 3
 ensure_imported
 
 OUT=".captures/$PRESET"
+# Keep the mid frame of the capture this run replaces, so a fix round can be compared with it.
+PREV=".captures/_prev/$PRESET.png"
+mapfile -t OLD < <(ls "$OUT"/f*.png 2>/dev/null | sort)
+if [ "${#OLD[@]}" -gt 0 ]; then
+  mkdir -p .captures/_prev && cp -f "${OLD[$(( ${#OLD[@]} / 2 ))]}" "$PREV"
+fi
 rm -rf "$OUT" && mkdir -p "$OUT"
 LOG="$OUT/godot.log"
 
@@ -35,3 +41,5 @@ LAST="${PNGS[$(( ${#PNGS[@]} - 1 ))]}"
 echo "frames: ${#PNGS[@]} in $(cygpath -m "$PROJECT_ROOT/$OUT")"
 echo "mid:  $(cygpath -m "$PROJECT_ROOT/$MID")"
 echo "last: $(cygpath -m "$PROJECT_ROOT/$LAST")"
+[ -f "$PREV" ] && echo "prev: $(cygpath -m "$PROJECT_ROOT/$PREV")  (mid frame of the capture this one replaced)"
+exit 0

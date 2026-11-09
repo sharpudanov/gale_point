@@ -3,6 +3,7 @@
 - **Engine:** Godot 4.7.2-stable (standard, not .NET), Forward+. Binary path lives ONLY in
   `tools/env.sh` (`$GODOT`); scripts source it. Never hard-code the path elsewhere.
 - **SPEC.md is the source of truth** for design and ART DIRECTION. Update it when decisions change.
+  It is over 1,000 lines: `grep -n '^## \|^### ' SPEC.md` and Read only the sections you need.
 
 ## Code rules
 - Godot 4 syntax only: `@export`/`@onready`, `await`, `super()`, `sig.connect(callable)`,
@@ -29,7 +30,9 @@
 ## Tools
 - `tools/sim.sh --plan=res://tests/plans/x.json --frames=600 --expect="path>=v"` — headless
   sim bot (`tests/sim_bot.gd`, plan schema in its header).
-- `tools/capture.sh <preset> [frames]` — renders real frames to `.captures/<preset>/`.
+  `tools/sim.sh --all [name...]` runs `tests/suite.txt` in parallel (`SIM_JOBS=1` for one by one).
+- `tools/capture.sh <preset> [frames]` — renders real frames to `.captures/<preset>/`; also prints
+  `prev:`, the mid frame of the capture it replaced, for before/after checks on fix rounds.
 - `tools/evidence.sh` — what the human saw: newest P/F12 screenshots, a digest of the newest play
   session and recent rendered frames. `SessionLog` (`src/harness/session_log.gd`) records every windowed
   normal-play run to `.captures/sessions/` (timeline, P bookmarks with telemetry, frame rate, errors).

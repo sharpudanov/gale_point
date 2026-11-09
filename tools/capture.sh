@@ -24,6 +24,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/env.sh" || exit 3
 cd "$PROJECT_ROOT" || exit 3
 ensure_imported
 
+if [ "$PRESET" != "test" ] && ! grep -qE "^[[:space:]]*\"$PRESET\":" src/core/shot_presets.gd; then
+  NAMES="$(sed -nE 's/^[[:space:]]*"([a-z0-9_]+)":.*/\1/p' src/core/shot_presets.gd | paste -sd' ' -)"
+  echo "CAPTURE FAIL: unknown preset '$PRESET'. Presets: $NAMES" >&2
+  exit 2
+fi
 OUT="${CAPTURE_OUT:-.captures/$PRESET}"
 PREV=".captures/_prev/$PRESET.png"
 if [ -z "${CAPTURE_OUT:-}" ]; then

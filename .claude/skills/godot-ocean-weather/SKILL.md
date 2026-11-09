@@ -90,6 +90,6 @@ appear in those textures (docs).
 
 ## Verify after changes
 `tools/capture.sh <storm preset>` + art-director for looks; for buoyancy logic expose
-`ocean.get_height()` results in `get_telemetry()` and assert with playtester.
+`ocean.get_height()` results in `get_telemetry()` and assert them with `tools/sim.sh --expect=...`.
 Next upgrades (untested): noise texture to break up foam, foam persistence, more waves via
 a `uniform int wave_count`.

@@ -48,6 +48,8 @@ func _ready() -> void:
 	if shot == "test":
 		TestShot.build(self)  # harness self-test (tools/capture.sh test)
 		return
+	if not shot.is_empty() and not ShotPresets.has_preset(shot):
+		push_error("unknown --shot preset '%s' (see ShotPresets.PRESETS)" % shot)
 	InputSetup.ensure()
 	args = DebugArgs.parse(ShotPresets.defaults(shot))
 	GameRng.seed_with(args.seed)
@@ -184,11 +186,17 @@ func _build() -> void:
 	clock.won.connect(post_fx.on_won)
 
 	# Flight recorder for human playtests (harness): windowed normal play only, or forced by --session_log.
-	var windowed_play: bool = DisplayServer.get_name() != "headless" and not ShotPresets.has_preset(shot)
-	if args.session_log or windowed_play:
+	# --bench=<seconds> (tools/bench.sh): measure the real frame rate of any preset, then quit.
+	var windowed_play: bool = DisplayServer.get_name() != "headless" and shot.is_empty()
+	var bench: float = str(BootArgs.get_value("bench", "0")).to_float()
+	if args.session_log or windowed_play or bench > 0.0:
 		session = SessionLog.new()
 		session.source = get_telemetry
+		if bench > 0.0:
+			session.file_name = "bench_%s.jsonl" % (shot if not shot.is_empty() else "play")
 		_add(session, "SessionLog")
+	if bench > 0.0:
+		get_tree().create_timer(bench).timeout.connect(get_tree().quit)
 
 
 ## --pre_trails: wet smears from the shore up to a spawn point, as if it had already glided in.

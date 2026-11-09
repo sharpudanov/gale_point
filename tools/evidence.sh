@@ -35,12 +35,19 @@ else
   fi
 fi
 
+echo "== CONTACT SHEET (every preset in one image, from the last tools/shots.sh run)"
+if [ -f .captures/_shots/sheet.png ]; then
+  echo "$(stamp .captures/_shots/sheet.png)  $(abs .captures/_shots/sheet.png)"
+else
+  echo "none (run tools/shots.sh)"
+fi
+
 echo "== RENDERED PRESET FRAMES (most recent captures, mid frame)"
 count=0
 while read -r d; do
   d="${d%/}"
   name="$(basename "$d")"
-  case "$name" in screenshots|sessions|sim|test|rv|skilltest*) continue ;; esac
+  case "$name" in _*|screenshots|sessions|sim|test|rv|skilltest*) continue ;; esac
   mapfile -t PNGS < <(ls "$d"/f*.png 2>/dev/null | sort)
   [ "${#PNGS[@]}" -eq 0 ] && continue
   echo "$(stamp "${PNGS[0]}")  $name  $(abs "${PNGS[$(( ${#PNGS[@]} / 2 ))]}")"

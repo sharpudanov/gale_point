@@ -76,5 +76,7 @@ Tested: fog energy 6 → invisible, 16 → faint smudge, 150 → clear warm shaf
 - Lights pointing the wrong way: Godot lights shine along local **-Z**; with `rotation_degrees`
   yaw θ the direction is `(-sin θ, ·, -cos θ)`. Check the frame, don't trust the math.
 - Headless runs use a dummy renderer: lighting can only be judged via `tools/capture.sh`.
+- Tune by sweep, not by guess: `tools/sweep.sh <preset> MoodRig.vfog_density 0.004 0.0085 0.017` renders
+  the values side by side in one image; write the winner into the `@export` default afterwards.
 - Shader built-ins (`INV_PROJECTION_MATRIX`, `SCREEN_UV`…) are not visible in helper functions — pass them in.
 - Judge at night with real frames, then confirm with art-director; ≤ 3 fix rounds per milestone.

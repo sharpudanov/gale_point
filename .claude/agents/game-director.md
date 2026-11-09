@@ -15,9 +15,11 @@ You can only Read, Grep and Glob: you review, the caller builds. Never read `.go
 
 ## PASS 1 - Cold-Eyes Check (do this BEFORE opening SPEC.md or DESIGN_LOG.md)
 1. The caller gives you an **EVIDENCE** block (the output of `tools/evidence.sh`): the newest human
-   screenshots (P / F12), a digest of the newest human play session, and recent rendered preset frames,
-   all with absolute paths and dates, plus the date of the last commit.
-   - Read the newest screenshot and 2-4 of the rendered frames.
+   screenshots (P / F12), a digest of the newest human play session, the contact sheet (every shot preset
+   in one labelled image) and recent rendered preset frames, all with absolute paths and dates, plus the
+   date of the last commit.
+   - Read the newest screenshot, then the contact sheet; open at most 2 full frames that deserve a
+     closer look. A human screenshot outranks any rendered preset.
    - Read the session digest as the player's diary: `change` lines are the timeline (hp, wave, phase,
      F1-F4 use), `mark` lines are the moments they pressed P (the `stats` there describe that screenshot),
      `end` is how it finished. Look for where they died, the hit ratio (`weapon.shots_fired` against the

@@ -60,6 +60,8 @@ class ErrorTap extends Logger:
 
 ## Returns the telemetry dictionary (main.get_telemetry).
 var source: Callable
+## Set before the node enters the tree to write this file instead (tools/bench.sh: bench_<preset>.jsonl).
+var file_name: String = ""
 
 var lines: int = 0
 var changes: int = 0
@@ -92,10 +94,12 @@ func _ready() -> void:
 	var abs_dir: String = ProjectSettings.globalize_path(dir_path)
 	DirAccess.make_dir_recursive_absolute(abs_dir)
 	var headless: bool = DisplayServer.get_name() == "headless"
-	var file_name: String = "sim_session.jsonl" if headless else "session_%d.jsonl" % int(Time.get_unix_time_from_system())
-	_file = FileAccess.open(abs_dir.path_join(file_name), FileAccess.WRITE)
+	var target: String = file_name
+	if target.is_empty():
+		target = "sim_session.jsonl" if headless else "session_%d.jsonl" % int(Time.get_unix_time_from_system())
+	_file = FileAccess.open(abs_dir.path_join(target), FileAccess.WRITE)
 	if _file == null:
-		push_warning("SessionLog: cannot write %s (recording disabled)" % abs_dir.path_join(file_name))
+		push_warning("SessionLog: cannot write %s (recording disabled)" % abs_dir.path_join(target))
 		set_process(false)
 		set_physics_process(false)
 		return

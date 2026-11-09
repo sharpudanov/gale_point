@@ -118,6 +118,7 @@ want_text "  ... and has all sections" 'SESSION LOG'
 
 if [ "$FAST" -eq 0 ]; then
   echo "== render gates (windows will open)"
+  want_code "capture rejects a mistyped preset" 2 bash tools/capture.sh storm_peek
   want_code "capture renders the self-test scene" 0 bash tools/capture.sh test 12
   want_text "  ... with a filmstrip" '^strip: '
   STAT="$(bash tools/img.sh stat .captures/test/f00000006.png)"

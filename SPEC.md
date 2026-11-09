@@ -138,6 +138,8 @@ Main (Node3D, main.gd)        BootArgs → DebugArgs → GameRng.seed → ShotPr
 | `src/audio/proc_audio.gd` | `ProcAudio` | synthesizes `AudioStreamWAV` buffers at boot (§4.13) |
 | `src/audio/soundscape.gd` | `Soundscape` | players and gain curves |
 | `src/harness/test_shot.gd` | `TestShot` | exists; harness self-test |
+| `src/harness/frame_snapper.gd` | `FrameSnapper` | harness: saves the frames listed in `--snap_frames` and quits (`tools/capture.sh`) |
+| `src/harness/tunable_overrides.gd` | `TunableOverrides` | harness: `--set=Class.property=value` overrides `@export` tunables as nodes enter the tree (sweeps, experiments) |
 | `src/harness/session_log.gd` | `SessionLog` | harness flight recorder for human play sessions: reads telemetry only, writes `.captures/sessions/session_<unix>.jsonl` (windowed normal play, or `--session_log`); digest via `tools/evidence.sh` |
 
 ### Conventions
@@ -577,6 +579,9 @@ Other materials (rain, spray, smoke, sparks, muzzle flash, decals) are `Standard
 | `--aim_part=chest\|head\|lantern` / `--aim_flare` / `--aim_cask=i` | `--aim` target: part of the first spawn / the `--place_flare` flare / oil cask i |
 | `--light_braziers` / `--overdrive` / `--toll=n` | all braziers lit / beam overdrive from frame 0 / the buoy nearest the view tolls n strokes |
 | `--shove_at=s` | one scripted rifle-butt shove at s seconds |
+| `--set=Class.property=value` | harness, repeatable: override an `@export` tunable on every node of that `class_name` before its `_ready()`. Experiments and `tools/sweep.sh` only; never in `tests/suite.txt` or a shot preset. An unknown property is an error |
+| `--snap=dir` / `--snap_frames=a,b,c` | harness (`tools/capture.sh`): save those rendered frames as `fNNNNNNNN.png`, then quit. Run with `--fixed-fps 30` |
+| `--bench=s` | harness (`tools/bench.sh`): record the real frame rate for s seconds, then quit |
 | `--session_log` | force the `SessionLog` recorder on in a headless sim (it then writes `sim_session.jsonl`); windowed normal play records without it |
 
 Explicit args override preset defaults. Unknown args are ignored.
@@ -612,6 +617,7 @@ fx:        { vignette, damage_vignette, grain }
 audio:     { wind_gain, rain_gain, surf_gain, rifle_cracks:int, kill_thuds:int, flare_hiss_active:bool, moans_played:int,
 			 thunders:int, duck_db (current ambience duck, <= 0), buses:int }
 session:   { active:bool, lines:int, changes:int, marks:int, errors:int }   (only while SessionLog runs)
+overrides: { requested:int, applied:int }                                   (only with --set)
 ```
 - `flash_active`: the lightning reveal window (0.6 s after a strike) is open.
 - `revealed_count`: Drowned lit by lightning right now.
@@ -639,7 +645,7 @@ session:   { active:bool, lines:int, changes:int, marks:int, errors:int }   (onl
 
 ---
 
-## 10. Sim plans (`tests/plans/<name>.json`, run by the playtester)
+## 10. Sim plans (`tests/plans/<name>.json`, run with `tools/sim.sh`)
 - Each plan is created in the milestone that first uses it.
 - 60 frames = 1 s. Player start (0, ground, 6), yaw 180°.
 - Base command: `tools/sim.sh --plan=res://tests/plans/<name>.json --frames=N <debug args> --expect=...`
@@ -866,7 +872,7 @@ Paths: `res://assets/<type>/<slug>/`.
 ## 12. Milestones
 Every milestone follows the CLAUDE.md workflow:
 1. Implement in small steps, keeping the hook green.
-2. The playtester runs the listed plans.
+2. `tools/sim.sh --all` runs the listed plans (every new rule gets a plan and a `tests/suite.txt` line).
 3. The art-director judges the listed presets, with at most 3 fix rounds; leftovers go into §14.
 4. `git commit`.
 

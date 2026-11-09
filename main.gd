@@ -17,6 +17,8 @@ var weather: StormWeather
 var player: Player
 var weapons: WeaponHolder
 var light_field: LightField
+var trails: WetTrails
+var enemies: Enemies
 var projectiles: Node3D
 var soundscape: Soundscape
 var post_fx: PostFx
@@ -63,6 +65,8 @@ func _build() -> void:
 	light_field = _add(LightField.new(), "LightField") as LightField
 	weather.lightning_struck.connect(light_field.on_lightning)
 	projectiles = _add(Node3D.new(), "Projectiles") as Node3D
+	trails = _add(WetTrails.new(), "WetTrails") as WetTrails
+	enemies = _add(Enemies.new(), "Enemies") as Enemies
 
 	player = _add(Player.new(), "Player") as Player
 	var start: Vector2 = args.player_at if args.has_player_at else Vector2(0.0, 6.0)
@@ -81,6 +85,14 @@ func _build() -> void:
 	player.weapons = weapons
 	if args.place_flare >= 0.0:
 		_place_flare(args.place_flare)
+	enemies.setup(island, ocean, light_field, lighthouse, player, soundscape, trails, weather)
+	enemies.freeze = args.freeze_enemies
+	for xz: Vector2 in args.spawn_at:
+		enemies.spawn(xz, true)
+		if args.pre_trails:
+			_pre_trail(xz)
+	if args.aim and enemies.first() != null:
+		player.aim_at(enemies.first().chest_position())
 
 	# The director runs after the clock (tree order) and pushes into everything built above.
 	add_child(director)
@@ -90,7 +102,23 @@ func _build() -> void:
 	post_fx = _add(PostFx.new(), "PostFx") as PostFx
 	post_fx.player = player
 	post_fx.set_weapons(weapons)
+	player.hit.connect(post_fx.on_hit)
+	player.died.connect(post_fx.on_died)
 	player.died.connect(_on_player_died)
+
+
+## --pre_trails: wet smears from the shore up to a spawn point, as if it had already glided in.
+func _pre_trail(xz: Vector2) -> void:
+	var out: Vector2 = xz.normalized() if xz.length() > 0.01 else Vector2(0.0, 1.0)
+	var step: float = 0.9
+	var d: float = step
+	while d < 22.0:
+		var p: Vector2 = xz + out * d
+		var h: float = island.height_at(p.x, p.y)
+		if h < ocean.get_height(p.x, p.y) + 0.2:
+			break
+		trails.stamp(Vector3(p.x, h, p.y), atan2(out.x, out.y) + PI)
+		d += step
 
 
 ## --place_flare=d: a burning flare (age 3 s) resting d m in front of the player; uses no ammo.
@@ -167,6 +195,7 @@ func get_telemetry() -> Dictionary:
 	}
 	t["weapon"] = weapons.telemetry()
 	t["flares"] = weapons.flares_telemetry(light_field.flares.size())
+	t["enemies"] = enemies.telemetry()
 	t["crate"] = lighthouse.crate.telemetry()
 	t["lighthouse"] = {
 		"lamp_on": lighthouse.lamp_on,

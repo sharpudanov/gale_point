@@ -1,0 +1,3 @@
+[
+  {"f": 240, "expect": "enemies.reached_lighthouse==0"}
+]

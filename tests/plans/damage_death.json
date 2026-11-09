@@ -1,0 +1,6 @@
+[
+  {"f": 120, "expect": "player.hp==3"},
+  {"f": 240, "expect": "player.hp==2"},
+  {"f": 240, "expect": "fx.damage_vignette>=0.3"},
+  {"f": 400, "expect": "player.hp==1"}
+]

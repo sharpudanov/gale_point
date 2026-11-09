@@ -1,0 +1,4 @@
+[
+  {"f": 30,  "expect": "enemies.list.0.lit==true"},
+  {"f": 120, "expect": "enemies.list.0.hp<=70"}
+]

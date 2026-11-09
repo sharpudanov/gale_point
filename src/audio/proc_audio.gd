@@ -222,6 +222,71 @@ func flare_hiss(seconds: float = 4.0) -> AudioStreamWAV:
 	return _to_wav(out, n, true)
 
 
+## Kill thud (SPEC 4.13): 60 -> 35 Hz sine drop over 0.35 s, a 120 ms lowpassed noise slap and a faint wet
+## splash (bandpass noise 1.2 kHz, 80 ms). 0.5 s total.
+func kill_thud(seconds: float = 0.5) -> AudioStreamWAV:
+	var n: int = int(seconds * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	var phase: float = 0.0
+	var slap_lp: float = 0.0
+	var a: float = _lp_coef(400.0)
+	var band: Vector2 = Vector2.ZERO  # state-variable filter (low, band)
+	var f: float = 2.0 * sin(PI * 1200.0 / RATE)
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var hz: float = lerpf(60.0, 35.0, clampf(t / 0.35, 0.0, 1.0))
+		phase += TAU * hz / RATE
+		var body: float = sin(phase) * exp(-t * 7.0) * minf(1.0, t * 400.0)
+		var w: float = _white()
+		slap_lp += a * (w - slap_lp)
+		var slap: float = slap_lp * 4.0 * exp(-t / 0.04) if t < 0.12 else 0.0
+		var high: float = w - band.x - 0.35 * band.y
+		band.y += f * high
+		band.x += f * band.y
+		var splash: float = band.y * 0.5 * exp(-t / 0.03) if t < 0.08 else 0.0
+		out[i] = (body * 1.0 + slap * 0.7 + splash * 0.25) * clampf((seconds - t) / 0.08, 0.0, 1.0)
+	return _to_wav(out, n, false)
+
+
+## Moan variants (SPEC 4.13): a saw at 90-140 Hz with a slow pitch glide, 5 Hz vibrato, two formant
+## bandpasses (500 / 1500 Hz) and breath noise, 1.8-3.2 s.
+func moan(variant: int) -> AudioStreamWAV:
+	var vrng: RandomNumberGenerator = RandomNumberGenerator.new()
+	vrng.seed = 7919 * (variant + 1)
+	var seconds: float = vrng.randf_range(1.8, 3.2)
+	var base: float = vrng.randf_range(90.0, 140.0)
+	var glide: float = vrng.randf_range(-0.22, 0.18)
+	var n: int = int(seconds * RATE)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	var phase: float = 0.0
+	var f1: float = 2.0 * sin(PI * 500.0 / RATE)
+	var f2: float = 2.0 * sin(PI * 1500.0 / RATE)
+	var s1: Vector2 = Vector2.ZERO
+	var s2: Vector2 = Vector2.ZERO
+	var breath_lp: float = 0.0
+	var breath_a: float = _lp_coef(900.0)
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var u: float = t / seconds
+		var hz: float = base * (1.0 + glide * sin(PI * u)) * (1.0 + 0.025 * sin(TAU * 5.0 * t))
+		phase = fmod(phase + hz / RATE, 1.0)
+		var saw: float = phase * 2.0 - 1.0
+		var low: float = saw * 0.5
+		var h1: float = saw - s1.x - 0.12 * s1.y
+		s1.y += f1 * h1
+		s1.x += f1 * s1.y
+		var h2: float = saw - s2.x - 0.12 * s2.y
+		s2.y += f2 * h2
+		s2.x += f2 * s2.y
+		var w: float = _white()
+		breath_lp += breath_a * (w - breath_lp)
+		var env: float = pow(sin(PI * clampf(u, 0.0, 1.0)), 0.8) * (0.8 + 0.2 * sin(TAU * 0.9 * t + float(variant)))
+		out[i] = (low * 0.25 + s1.y * 0.9 + s2.y * 0.45 + breath_lp * 0.5) * env
+	return _to_wav(out, n, false)
+
+
 func _to_wav(src: PackedFloat32Array, n: int, loop: bool) -> AudioStreamWAV:
 	var data: PackedFloat32Array = src
 	if loop:

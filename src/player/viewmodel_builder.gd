@@ -44,7 +44,7 @@ static func wood_material() -> StandardMaterial3D:
 
 
 static func metal_material() -> StandardMaterial3D:
-	return pbr(METAL_DIR, Color(0.22, 0.22, 0.23) * 2.4, 0.55, 0.7, 1.5)
+	return pbr(METAL_DIR, Color(0.22, 0.22, 0.23) * 1.5, 0.6, 0.7, 1.5)
 
 
 static func paint_material() -> StandardMaterial3D:
@@ -60,8 +60,8 @@ static func leather_material() -> StandardMaterial3D:
 
 static func sleeve_material() -> StandardMaterial3D:
 	var m: StandardMaterial3D = StandardMaterial3D.new()
-	m.albedo_color = Color(0.05, 0.055, 0.05)
-	m.roughness = 0.5
+	m.albedo_color = Color(0.06, 0.06, 0.055)
+	m.roughness = 0.85
 	return m
 
 
@@ -142,12 +142,14 @@ static func rifle() -> Node3D:
 
 	# Wood: butt, wrist, fore-end.
 	_part(root, "Butt", _box(Vector3(0.045, 0.13, 0.12)), wood, Vector3(0.0, 0.015, 0.52), Vector3(-8.0, 0.0, 0.0))
-	var wrist: MeshInstance3D = _part(root, "Wrist", _capsule(0.021, 0.30), wood, Vector3(0.0, 0.040, 0.31), Vector3(90.0, 0.0, 0.0))
+	# The wrist runs from inside the receiver's rear (z 0.14) to the butt (z 0.50); its top is flush with the
+	# receiver top and the fore-end overlaps the receiver's front, so there are no gaps between the parts.
+	var wrist: MeshInstance3D = _part(root, "Wrist", _capsule(0.021, 0.36), wood, Vector3(0.0, 0.055, 0.32), Vector3(90.0, 0.0, 0.0))
 	wrist.scale = Vector3(1.0, 1.0, 1.7)   # capsule axis is local Y -> stretch into a 0.04 x 0.07 section
-	var fore: MeshInstance3D = _part(root, "Foreend", _capsule(0.021, 0.34), wood, Vector3(0.0, 0.064, -0.19), Vector3(90.0, 0.0, 0.0))
+	var fore: MeshInstance3D = _part(root, "Foreend", _capsule(0.021, 0.38), wood, Vector3(0.0, 0.064, -0.17), Vector3(90.0, 0.0, 0.0))
 	fore.scale = Vector3(1.0, 1.0, 1.15)
 	# Iron: receiver, barrel, sights.
-	_part(root, "Receiver", _box(Vector3(0.035, 0.045, 0.16)), metal, Vector3(0.0, 0.065, 0.08))
+	_part(root, "Receiver", _box(Vector3(0.04, 0.05, 0.20)), metal, Vector3(0.0, 0.065, 0.10))
 	_part(root, "Barrel", _cyl(0.011, 0.62), metal, Vector3(0.0, BARREL_Y, -0.31), Vector3(90.0, 0.0, 0.0))
 	_part(root, "Muzzle_Crown", _cyl(0.0135, 0.02), metal, Vector3(0.0, BARREL_Y, -0.62), Vector3(90.0, 0.0, 0.0))
 	_part(root, "FrontSight", _box(Vector3(0.004, 0.012, 0.01)), metal, Vector3(0.0, SIGHT_Y - 0.006, -0.60))
@@ -160,7 +162,8 @@ static func rifle() -> Node3D:
 	guard.ring_segments = 8
 	_part(root, "TriggerGuard", guard, metal, Vector3(0.0, 0.025, 0.15), Vector3(0.0, 0.0, 90.0))
 	_part(root, "Trigger", _box(Vector3(0.006, 0.02, 0.006)), metal, Vector3(0.0, 0.035, 0.15))
-	_part(root, "Floorplate", _box(Vector3(0.03, 0.01, 0.10)), metal, Vector3(0.0, 0.015, 0.05))
+	# Floorplate / magazine well: fills the whole gap from the receiver's underside (y 0.0425) down to the plate.
+	_part(root, "Floorplate", _box(Vector3(0.03, 0.036, 0.10)), metal, Vector3(0.0, 0.028, 0.05))
 	# Bolt handle (animated): pivots about the bolt axis at the receiver's right side.
 	var bolt: Node3D = Node3D.new()
 	bolt.name = "Bolt"
@@ -203,12 +206,14 @@ static func rifle_left_arm() -> Node3D:
 	var glove: StandardMaterial3D = glove_material()
 	var sleeve: StandardMaterial3D = sleeve_material()
 	# Glove wrapped round the fore-end: palm underneath, fingers curling up its left side, thumb on top.
-	_part(root, "Palm", _box(Vector3(0.062, 0.03, 0.09)), glove, Vector3(0.0, 0.036, -0.25))
+	_part(root, "Palm", _box(Vector3(0.062, 0.03, 0.09)), glove, Vector3(0.0, 0.045, -0.25))
 	_part(root, "FingersSide", _box(Vector3(0.016, 0.06, 0.085)), glove, Vector3(-0.034, 0.058, -0.25))
-	_part(root, "FingerTips", _box(Vector3(0.03, 0.014, 0.08)), glove, Vector3(-0.018, 0.092, -0.25))
+	_part(root, "FingerTips", _box(Vector3(0.04, 0.02, 0.09)), glove, Vector3(-0.018, 0.092, -0.25))
 	_part(root, "Thumb", _box(Vector3(0.014, 0.014, 0.075)), glove, Vector3(0.03, 0.09, -0.235), Vector3(0.0, -8.0, 0.0))
 	_part(root, "Cuff", _cyl(0.046, 0.05, 14), glove, Vector3(-0.012, 0.02, -0.2), Vector3(80.0, 20.0, 0.0))
-	_limb(root, "Sleeve", 0.045, Vector3(-0.02, 0.01, -0.18), Vector3(-0.18, -0.22, 0.22), sleeve)
+	# Forearm: comes up from the lower left of the screen toward the glove (mostly sideways and down, only
+	# slightly back), so it reads as an arm reaching in, not a vertical pillar.
+	_limb(root, "Sleeve", 0.032, Vector3(-0.02, 0.02, -0.2), Vector3(-0.30, -0.20, 0.02), sleeve)
 	return root
 
 

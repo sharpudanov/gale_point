@@ -32,9 +32,9 @@ const MIST_SHADER_PATH: String = "res://shaders/sea_mist.gdshader"
 @export var patch_size: Vector3 = Vector3(30.0, 4.0, 30.0)
 @export var patch_range: float = 70.0     ## patches respawn upwind beyond this distance
 @export_group("Lightning")
-@export var flash_peak_energy: float = 6.0
+@export var flash_peak_energy: float = 4.5
 @export var flash_color: Color = Color(0.80, 0.86, 1.0)
-@export var flash_fog_energy: float = 2.0
+@export var flash_fog_energy: float = 0.5
 @export var reveal_time: float = 0.6
 @export var first_strike_min: float = 12.0  ## seconds, x k
 @export var glow_flash_threshold: float = 6.0

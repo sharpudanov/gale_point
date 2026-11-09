@@ -1,7 +1,7 @@
 # Gale Point: Night Watch — Specification
 
 > Source of truth for design decisions. Code follows this file; change this file first.
-> Status: **M1 done** (island, sea, storm, walk). **M2 done** (weapons, light, resupply). M3 next. All numbers are starting values: tune them through
+> Status: **M1 done** (island, sea, storm, walk). **M2 done** (weapons, light, resupply). **M3 done** (the Drowned; leftovers in �14). M4 next. All numbers are starting values: tune them through
 > the listed `@export`s, then update this file when a value changes for good.
 
 ---
@@ -551,6 +551,7 @@ Other materials (rain, spray, smoke, sparks, muzzle flash, decals) are `Standard
 | `--look=yaw,pitch` | start yaw/pitch in degrees |
 | `--beam_yaw=deg` / `--beam_still` | beam start yaw / stop the rotation |
 | `--fire_at=s` | the rifle fires once at s seconds (capture presets) |
+| `--pre_trails` | wet smears stamped from the shore up to each `--spawn_at` point (for frozen captures, which never stamp their own) |
 
 Explicit args override preset defaults. Unknown args are ignored.
 
@@ -600,9 +601,9 @@ audio:     { wind_gain, rain_gain, surf_gain, rifle_cracks:int, kill_thuds:int, 
 | `calm` | `--night_t=15 --no_waves --no_lightning --player_at=0,7 --look=180,-4 --beam_yaw=150` (the beam sweeps through view centre at t≈1 s) | slate sea, crest foam, Fresnel, HDRI ash/bruise sky, warm beam shaft in fog, wet black rock, grain/vignette |
 | `storm_peak` | `--night_t=270 --no_waves --no_lightning --player_at=12,14 --look=225,-6 --spawn_at=30,45;40,40;22,55` | big waves and whitecaps, dense low noisy mist, angled rain, spray, silhouettes in fog; values not crushed |
 | `lightning` | `--night_t=200 --no_waves --flash_at=0.80 --player_at=0,7 --look=180,-3 --freeze_enemies --spawn_at=-8,32;-3,38;4,30;10,42;15,36` | cold whole-scene flash at frame 30, every Drowned revealed as a silhouette, no bloom on foam, sky clouds lit |
-| `flare_fight` | `--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-5 --place_flare=14 --spawn_at=-3,23;4,19;-12,27;11,30 --aim --fire_at=0.98` | warm flare vs. cold scene, flare glow in fog, flare shadows, two lit and two dark Drowned, muzzle flash on frame 30, weathered viewmodel and sway |
+| `flare_fight` | `--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-5 --place_flare=14 --spawn_at=-3,23;4,19;-13,28;11,30 --aim --fire_at=0.98` | warm flare vs. cold scene, flare glow in fog, flare shadows, two lit and two dark Drowned, muzzle flash on frame 30, weathered viewmodel and sway |
 | `dawn` | `--night_t=320 --no_waves --player_at=-6,-10 --look=270,2` | cold sunrise from +X, fog lifted, calmer sea, no rain, nothing warm except the lamp |
-| `drowned_close` | `--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --place_flare=18 --spawn_at=0.5,11;-3,16` | cloth flutter, tattered hem, faint pale face, silhouette against the flare glow, wet trail, drips |
+| `drowned_close` | `--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --pre_trails --place_flare=18 --spawn_at=0.5,11;-3,16` | cloth flutter, tattered hem, faint pale face, silhouette against the flare glow, wet trail, drips |
 
 ---
 
@@ -1018,3 +1019,39 @@ addition to the M2 stub. The Rifle's `try_fire` while reloading with >= 1 round 
 - Flare shadows are only shown as dark ridges against the glow in `flare_fight` (the flare sits in a hollow). A rock closer to the flare would demonstrate (b) better.
 - Sway and bob (check e) cannot be judged in `flare_fight` (recoil dominates); the breathing sway is only ~0.35 deg.
 - Tally opacity was raised above the spec's 60% for legibility (0.95).
+
+
+### M3: chosen asset slug (Poly Haven, CC0; also in `ASSETS.md`)
+| # | Slug | Res | Used by |
+|---|---|---|---|
+| 10 | `hessian_230` | 1k | `drowned_cloth` detail normal + roughness (albedo unused) |
+
+### M3: values changed during tuning / additions beyond the spec
+| Where | Value | Spec -> tuned | Why |
+|---|---|---|---|
+| `Enemies` (new, `src/enemies/enemies.gd`) | container, spawn(), separation, kill stats, telemetry | - | the SPEC 3 "Enemies" node; M4's WaveDirector spawns through `Enemies.spawn(xz, emerged)` |
+| `HitFx` (new, `src/fx/hit_fx.gd`) | lethal splash/spark, dark mist, emerge splash | - | one-shot particle bursts, no light nodes |
+| `--pre_trails` (new debug arg) | | - | frozen captures never stamp wet trails |
+| `Drowned.frozen_drag_speed` (new) | 0.7 | - | frozen captures still show the hem trailing |
+| Cloak profile | hem radius / hem noise | 0.55 / 0.15 -> **0.64 / 0.20** | the hem read as a rigid bell; shoulders also narrowed (0.42 -> 0.36) |
+| `drowned_cloth` | `flutter_amp` / `hem_weight_pow` / `tatter_threshold` / `tatter_band` / `roughness` / `specular` | 0.12 / 1.6 / 0.45 / 0.3 / 0.45 / 0.6 -> **0.2 / 1.2 / 0.6 / 0.3 / 0.75 / 0.25** | visible flutter and tatter; wet sheen made the sleeves read as pale slabs |
+| Face / hands albedo | (0.55) / (0.50) -> **(0.26) / (0.28)** | the face was not faint; it read as a mask even outside the flare |
+| Sleeves | shoulder x, size | 0.34 inside the cloak, 0.12 x 0.7 -> **0.44 outside the cloak, 0.09 x 0.9, hanging down** | arms were hidden inside the cloak |
+| `WetTrails` | `trail_size` / `project_depth` / `wet_color` / `wet_roughness` | 0.55x1.0 / - / dark / 0.06 -> **1.3x3.0 / 2.5 / (0.06,0.07,0.09) / 0.0** | trails were invisible on near-black rock |
+| `StormWeather` flash | `flash_peak_energy` / `flash_fog_energy` | 6.0 / 2.0 -> **4.5 / 0.5** | the lightning mid frame went milky grey |
+| Viewmodel | left sleeve capsule radius, roughness; receiver box; wrist/floorplate | 0.045, 0.5 -> **0.032, 0.85**; receiver **0.04x0.05x0.20**; wrist y 0.055, floorplate 0.036 tall | angled forearm and no gaps between receiver, wrist, fore-end and floorplate; metal tint x2.4 -> x1.5 |
+| `flare_fight` preset | 3rd Drowned | (-12,27) -> **(-13,28)** | (-12,27) was 13.4 m from the flare, inside the 13.5 m radius, so three were lit instead of two |
+
+Implementation notes: `Player` emits `hit` on every landed hit (also in god mode) for the damage vignette, and has
+`aim_at(point)` for `--aim`. PostFx runs the death fade (1.5 s) and the "The light went out." card, and Enter reloads the
+scene once the card shows. `Drowned` per-instance uniforms (`time_offset`, `dissolve`, `flutter_scale`, `drag_offset`) are
+`instance uniform`s on one shared `ShaderMaterial`. Tower reach and contact both call `Player.take_hit()`, so 1.5 s of
+invulnerability applies to both. `lighthouse_reach` is tight: the gutter ends about 7 frames after the plan's frame-480 check.
+
+### M3: art-director leftovers after 3 rounds (flare_fight / lightning / drowned_close; (a), (b), (d) pass, (c) marginal, (e) fails)
+- **(e) Wet trails are not readable in `drowned_close`**: smears are dark on near-black rock and nothing bright sits behind them to reflect. Not tried: `Environment.ssr_enabled` (global, so it needs a re-review of every M1/M2 preset), a lighter `wet_color`, or `albedo_mix` 0.6.
+- Close-up Drowned still read as a boxy bell with slab-like sleeves, and as shrubs at range (no head/shoulder notch). Ideas: more rings (12 -> 16), a neck and shoulder notch in `PROFILE`, a tapered sleeve mesh with more rows, lowering the model so the hem meets the rock.
+- The face is a hard-edged pale crescent under the hood; it could be a touch fainter and softer.
+- The lightning flash is still fairly flat grey. Ideas: a raking flash light (rotation -35 deg, shadows on), scaling the sky `flash` by 0.6, `fog_sky_affect` 0.7 to hide the horizon seam.
+- Viewmodel: the rust texture on the receiver is blotchy at close range and the bipod/forearm tube is plain. The flare haze covers about 40% of the `flare_fight` frame (`flare light_energy` -15% would keep more slate).
+- Engine: "11 ObjectDB instances leaked at exit" on shutdown after long sims (static material caches in `DrownedBuilder`). Harmless.

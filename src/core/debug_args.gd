@@ -22,6 +22,7 @@ var has_beam_yaw: bool = false
 var beam_yaw: float = 0.0
 var beam_still: bool = false
 var fire_at: float = -1.0
+var pre_trails: bool = false         ## stamp wet trails behind each spawned Drowned (frozen captures)
 
 
 static func parse(preset_defaults: Dictionary) -> DebugArgs:
@@ -68,6 +69,7 @@ static func parse(preset_defaults: Dictionary) -> DebugArgs:
 		d.has_beam_yaw = true
 		d.beam_yaw = float(str(v))
 	d.beam_still = get_v.call("beam_still") != null
+	d.pre_trails = get_v.call("pre_trails") != null
 	v = get_v.call("fire_at")
 	if v != null:
 		d.fire_at = float(str(v))

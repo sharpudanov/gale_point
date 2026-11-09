@@ -18,3 +18,4 @@ All third-party assets are CC0 from Poly Haven, added only via the asset-fetcher
 | Weathered Planks | textures | 1k | res://assets/textures/weathered_planks/ | https://polyhaven.com/a/weathered_planks | Dario Barresi, Dimitrios Savva | CC0 | 2026-11-09 |
 | Dark Wood | textures | 1k | res://assets/textures/dark_wood/ | https://polyhaven.com/a/dark_wood | Dario Barresi, Dimitrios Savva, Rico Cilliers | CC0 | 2026-11-09 |
 | Wooden Crate 01 | models | 1k | res://assets/models/wooden_crate_01/ | https://polyhaven.com/a/wooden_crate_01 | James Ray Cock | CC0 | 2026-11-09 |
+| Hessian 230 | textures | 1k | res://assets/textures/hessian_230/ | https://polyhaven.com/a/hessian_230 | colormass, Rico Cilliers | CC0 | 2026-11-09 |

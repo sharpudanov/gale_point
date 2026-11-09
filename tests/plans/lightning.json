@@ -1,0 +1,10 @@
+[
+  {"f": 50,  "expect": "enemies.revealed_count==0"},
+  {"f": 50,  "expect": "enemies.lit_count==0"},
+  {"f": 66,  "expect": "storm.flash_active==true"},
+  {"f": 66,  "expect": "enemies.revealed_count==2"},
+  {"f": 66,  "expect": "enemies.lit_count==2"},
+  {"f": 68,  "mouse_button": "left", "hold": 3},
+  {"f": 74,  "expect": "weapon.hits_lit==1"},
+  {"f": 150, "expect": "enemies.revealed_count==0"}
+]

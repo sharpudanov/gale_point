@@ -16,6 +16,9 @@ extends Node3D
 @export var click_db: float = -8.0
 @export var launch_db: float = -2.0
 @export var hiss_db: float = -4.0
+@export var kill_thud_db: float = -4.0
+@export var moan_db: float = -2.0
+@export var moan_variants: int = 4
 
 var wind_gain: float = -80.0
 var rain_gain: float = -80.0
@@ -23,6 +26,8 @@ var surf_gain: float = -80.0
 var thunders_played: int = 0
 var rifle_cracks: int = 0
 var hiss_active: int = 0
+var kill_thuds: int = 0
+var moans_played: int = 0
 
 var _wind: AudioStreamPlayer
 var _rain: AudioStreamPlayer
@@ -35,6 +40,8 @@ var _bolt_stream: AudioStreamWAV
 var _reload_stream: AudioStreamWAV
 var _launch_stream: AudioStreamWAV
 var _hiss_stream: AudioStreamWAV
+var _thud_stream: AudioStreamWAV
+var _moan_streams: Array[AudioStreamWAV] = []
 
 
 func _ready() -> void:
@@ -66,6 +73,9 @@ func _ready() -> void:
 		_click_pool.append(_oneshot2d("Click%d" % i, _bolt_stream, click_db))
 	_launch_stream = synth.flare_launch()
 	_hiss_stream = synth.flare_hiss()
+	_thud_stream = synth.kill_thud()
+	for v: int in moan_variants:
+		_moan_streams.append(synth.moan(v))
 	_wind.play()
 	_rain.play()
 	for i: int in _surf.size():
@@ -147,6 +157,30 @@ func hiss_stopped() -> void:
 	hiss_active = maxi(0, hiss_active - 1)
 
 
+## Rifle kill: a heavy wet thud, 3D at the hit point (unit size 8).
+func play_kill_thud(pos: Vector3) -> void:
+	kill_thuds += 1
+	_oneshot3d(_thud_stream, pos, 8.0, kill_thud_db, 120.0)
+
+
+## A Drowned moan, 3D at the enemy (unit size 10, max distance 80 m). `variant` picks one of 4.
+func play_moan(pos: Vector3, variant: int) -> void:
+	moans_played += 1
+	_oneshot3d(_moan_streams[posmod(variant, _moan_streams.size())], pos, 10.0, moan_db, 80.0)
+
+
+func _oneshot3d(stream: AudioStream, pos: Vector3, unit: float, db: float, max_dist: float) -> void:
+	var p: AudioStreamPlayer3D = AudioStreamPlayer3D.new()
+	p.stream = stream
+	p.unit_size = unit
+	p.volume_db = db
+	p.max_distance = max_dist
+	p.finished.connect(p.queue_free)
+	add_child(p)
+	p.global_position = pos
+	p.play()
+
+
 func set_storm(wind_speed: float, rain_ratio: float, wave_scale: float) -> void:
 	wind_gain = lerpf(wind_db.x, wind_db.y, clampf(inverse_lerp(wind_range.x, wind_range.y, wind_speed), 0.0, 1.0))
 	rain_gain = lerpf(rain_db.x, rain_db.y, clampf(rain_ratio, 0.0, 1.0)) if rain_ratio > 0.01 else mute_db
@@ -177,8 +211,8 @@ func telemetry() -> Dictionary:
 		"rain_gain": snappedf(rain_gain, 0.001),
 		"surf_gain": snappedf(surf_gain, 0.001),
 		"rifle_cracks": rifle_cracks,
-		"kill_thuds": 0,
+		"kill_thuds": kill_thuds,
 		"flare_hiss_active": hiss_active > 0,
-		"moans_played": 0,
+		"moans_played": moans_played,
 		"thunders": thunders_played,
 	}

@@ -3,6 +3,8 @@ extends CharacterBody3D
 ## First-person player (SPEC §4.4): walk, sprint, mouse look, no jump, shore block, HP.
 
 signal died
+## Emitted whenever damage lands (also in god mode), for the damage vignette.
+signal hit
 
 @export var walk_speed: float = 3.2
 @export var sprint_speed: float = 5.6
@@ -141,17 +143,26 @@ func is_inside_lighthouse() -> bool:
 	return Vector2(global_position.x, global_position.z).length() < inside_radius and global_position.y > 4.5
 
 
-## Damage hook for M3 (contacts / tower reach).
+## Contact / tower-reach damage: 1 HP, 1.5 s of invulnerability, screen shake and the damage spike.
 func take_hit() -> void:
 	if not is_alive() or invuln_left > 0.0:
 		return
 	invuln_left = invuln_time
 	camera.add_trauma(0.6)
+	hit.emit()
 	if god:
 		return
 	hp -= 1
 	if hp <= 0:
 		died.emit()
+
+
+## Turn the view to look at a world point (--aim).
+func aim_at(point: Vector3) -> void:
+	var d: Vector3 = point - head.global_position
+	_yaw_deg = rad_to_deg(atan2(-d.x, -d.z))
+	_pitch_deg = clampf(rad_to_deg(atan2(d.y, Vector2(d.x, d.z).length())), -pitch_limit_deg, pitch_limit_deg)
+	_apply_look()
 
 
 func yaw_deg() -> float:

@@ -263,16 +263,15 @@ func on_rifle_hit(point: Vector3, dir: Vector3, shootable: bool, damage: float, 
 	else:
 		_shudder_left = dark_hit_shudder_time
 		HitFx.dark_mist(_hub, point, dir)
-		if not _hub.freeze:
-			# Live play: darkness is not full immunity. Light is still the multiplier (one shot kills in
-			# light), but two body shots in the dark kill too, and each one shoves the Drowned back.
-			hp -= dark_hit_damage
-			_push(Vector3(dir.x, 0.0, dir.z), dark_knockback, knock_time)
-			if hp <= 0.0:
-				_die("rifle")
-				_hub.lethal_hit(point, dir)
-			else:
-				HitFx.lethal_splash(_hub, point, dir)
+		# Darkness is not full immunity. Light is still the multiplier (one shot kills in light), but two
+		# body shots in the dark kill too, and each one shoves the Drowned back.
+		hp -= dark_hit_damage
+		_push(Vector3(dir.x, 0.0, dir.z), dark_knockback, knock_time)
+		if hp <= 0.0:
+			_die("rifle")
+			_hub.lethal_hit(point, dir)
+		else:
+			HitFx.lethal_splash(_hub, point, dir)
 
 
 ## Ray-vs-hood-sphere: distance along the ray, or -1. The sphere follows the animated body.

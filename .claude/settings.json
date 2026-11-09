@@ -69,6 +69,28 @@
             "timeout": 180
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/godot_check.sh\" --changed",
+            "timeout": 180
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/gate.sh\"",
+            "timeout": 300,
+            "statusMessage": "Checking the regression suite"
+          }
+        ]
       }
     ]
   }

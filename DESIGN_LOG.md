@@ -62,10 +62,6 @@ rules and numbers; this log records *why* we changed things and what we refuse t
   can't move closer than about 45 m, because the coast reaches 40 m.
 
 ## Next Horizon
-- **Harness debt, do first:** dark-hit damage is skipped while `--freeze_enemies` is set (`drowned.gd`,
-  `if not _hub.freeze`), so `rifle_dark` and the `hit_dark` preset still show the old "a dark hit does
-  nothing" rule that no player sees. Remove the gate and move those expectations to the live rule (tests
-  follow rules, CLAUDE.md).
 - **Captain vs. headshot (human test):** the any-light headshot rule also one-shots a 200 hp Lantern
   Captain, whose 1.2x hood is the easiest head on the island. Decide after playing whether the lantern
   shot still feels like the right answer.

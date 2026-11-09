@@ -303,7 +303,7 @@ layer 1).
 - Hitbox: Area3D on the Drowned root (not `_body`, which is animated every frame): capsule r 0.58, h 2.15 at y 1.05 plus a shoulder/sleeve box 1.10 x 0.75 x 0.65 at y 1.35. Casts shadows. The rifle does not rely on it alone: `Rifle._hitscan` casts a world-only ray (layer 1) for the travel distance, then tests every living Drowned with an exact ray-vs-vertical-cylinder check (centre = `global_position + _body.position + (0, 1.05, 0)`, y -0.3..+2.35, r 0.75 plus tan(1.2 deg) x range) and takes the closest one within 0.4 m of the world hit; the Area3D ray is only a fallback.
 - **Emission only while "searing" (lit, so shootable).** Unlit cloth has no emission and no rim. While `lit` the cloth shader (`lit_amount`, smoothed 0..1) adds `Color(1.0, 0.55, 0.22) * 2.2` as a grazing rim plus crack veins, strongest on hood and shoulders; the cracks widen and brighten as hp drops (`damage_amount = 1 - hp/100`). The face and eye sockets get warm emission, and a steam/ash particle emitter rises from the shoulders. All of it is shading and particles: no light node, never a gameplay light.
 - **Hit feedback (PostFx `Reticle`):** lit hit = 4 golden `#FFB266` X-ticks for 0.22 s (bigger on a kill); dark (immune) hit = cold slate-blue deflect ring for 0.25 s plus a dull metallic "tonk" (`Soundscape.play_deflect`). Hit/kill/dark counts: `fx.hit_markers`, `audio.deflects`.
-- **Hit rule:** `Drowned.hit_shootable()` = point is lit OR the Drowned is lit OR its chest is shootable (chest height 1.35). A lit hit does 100 (one-shot kill). **Headshot (iteration 1): a ray through the hood sphere (r 0.27 at 1.9 m, x captain scale, +tan 0.35 deg x range) kills outright in any light.** **Live play only (not under `--freeze_enemies`): a body hit on an unlit Drowned does 50 damage (two shots kill; iteration 1, was 35/three) and shoves it back 1.4 m over 0.25 s**, with the dark-hit marker, deflect sound and a splash; light stays the big multiplier (instant kill plus burn DPS). With `--freeze_enemies` dark hits stay harmless (`rifle_dark.json`); `rifle_dark_live.json` covers the live rule. `LightField` flare occlusion rays run from 1.2 m above the queried point to 1.1 m above the flare, and `flare_radius` is 15.5 m.
+- **Hit rule:** `Drowned.hit_shootable()` = point is lit OR the Drowned is lit OR its chest is shootable (chest height 1.35). A lit hit does 100 (one-shot kill). **Headshot (iteration 1): a ray through the hood sphere (r 0.27 at 1.9 m, x captain scale, +tan 0.35 deg x range) kills outright in any light.** **A body hit on an unlit Drowned does 50 damage (two shots kill; iteration 1, was 35/three) and shoves it back 1.4 m over 0.25 s**, with the dark-hit marker, deflect sound and a splash; light stays the big multiplier (instant kill plus burn DPS). The rule is the same under `--freeze_enemies` (debug flags stage a scenario, they never change a rule): `rifle_dark.json` checks it on a frozen target, `rifle_dark_live.json` on a gliding one. `LightField` flare occlusion rays run from 1.2 m above the queried point to 1.1 m above the flare, and `flare_radius` is 15.5 m.
 
 **Waves** (u = t / night_len). Start times and spawn intervals scale by k.
 
@@ -751,12 +751,12 @@ session:   { active:bool, lines:int, changes:int, marks:int, errors:int }   (onl
 - **M2:** `--frames=300 --no_waves --no_lightning`
 - **M4:** `--frames=780 --night_len=60 --god --no_lightning --expect="crate.stocked==true" --expect="crate.refills==1"` (wave 2 starts at 10.8 s = f648 and restocks)
 
-### `rifle_dark.json` (M3): a dark hit does nothing
+### `rifle_dark.json` (M3, updated): a dark body hit does 50, never a kill
 ```json
 [
   {"f": 10, "mouse_button": "left", "hold": 3},
   {"f": 16, "expect": "weapon.hits_dark==1"},
-  {"f": 16, "expect": "enemies.list.0.hp==100"},
+  {"f": 16, "expect": "enemies.list.0.hp==50"},
   {"f": 16, "expect": "enemies.list.0.lit==false"}
 ]
 ```

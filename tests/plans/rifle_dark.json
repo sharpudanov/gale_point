@@ -1,7 +1,7 @@
 [
   {"f": 10, "mouse_button": "left", "hold": 3},
   {"f": 16, "expect": "weapon.hits_dark==1"},
-  {"f": 16, "expect": "enemies.list.0.hp==100"},
+  {"f": 16, "expect": "enemies.list.0.hp==50"},
   {"f": 16, "expect": "enemies.list.0.lit==false"},
   {"f": 16, "expect": "fx.hit_markers.dark==1"},
   {"f": 16, "expect": "fx.hit_markers.kill==0"},

@@ -255,10 +255,12 @@ func _print_telemetry(t: Dictionary) -> void:
 
 func _numeric_delta(a: Variant, b: Variant) -> Variant:
 	if a is Dictionary and b is Dictionary:
+		var da: Dictionary = a
+		var db: Dictionary = b
 		var out: Dictionary = {}
-		for k: Variant in b:
-			if a.has(k):
-				var d: Variant = _numeric_delta(a[k], b[k])
+		for k: Variant in db:
+			if da.has(k):
+				var d: Variant = _numeric_delta(da[k], db[k])
 				if d != null:
 					out[k] = d
 		return out if not out.is_empty() else null
@@ -266,13 +268,21 @@ func _numeric_delta(a: Variant, b: Variant) -> Variant:
 		if is_equal_approx(float(a), float(b)):
 			return null
 		return b - a if (a is int and b is int) else snappedf(float(b) - float(a), 0.001)
-	if a is Vector2 or a is Vector3:
-		return null if a.is_equal_approx(b) else str(b - a)
-	if a is Array and b is Array and a.size() == b.size():
+	if a is Vector2 and b is Vector2:
+		var va: Vector2 = a
+		var vb: Vector2 = b
+		return null if va.is_equal_approx(vb) else str(vb - va)
+	if a is Vector3 and b is Vector3:
+		var wa: Vector3 = a
+		var wb: Vector3 = b
+		return null if wa.is_equal_approx(wb) else str(wb - wa)
+	if a is Array and b is Array and (a as Array).size() == (b as Array).size():
+		var aa: Array = a
+		var ab: Array = b
 		var arr: Array = []
 		var any: bool = false
-		for i: int in a.size():
-			var d: Variant = _numeric_delta(a[i], b[i])
+		for i: int in aa.size():
+			var d: Variant = _numeric_delta(aa[i], ab[i])
 			any = any or d != null
 			arr.append(d if d != null else 0)
 		return arr if any else null
@@ -297,8 +307,8 @@ func _check_expect(expr: String, t: Dictionary, prefix: String = "") -> void:
 func _dig(t: Variant, path: String) -> Variant:
 	var cur: Variant = t
 	for part: String in path.split("."):
-		if cur is Dictionary and cur.has(part):
-			cur = cur[part]
+		if cur is Dictionary and (cur as Dictionary).has(part):
+			cur = (cur as Dictionary)[part]
 		elif (cur is Array or cur is Vector2 or cur is Vector3) and part.is_valid_int():
 			cur = cur[int(part)]
 		else:

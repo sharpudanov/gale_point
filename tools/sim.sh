@@ -52,6 +52,10 @@ if [ "${1:-}" = "--all" ]; then
   done
   total="${#names[@]}"
   echo "SUITE $((total - fails))/$total passed"
+  # A full green run stamps the tree; tools/gate.sh (Stop hook) reruns the suite only if files are newer.
+  if [ "$fails" -eq 0 ] && [ "$only" = "  " ]; then
+    touch .captures/sim/.suite_green
+  fi
   [ "$fails" -eq 0 ]
   exit $?
 fi
@@ -71,7 +75,7 @@ if grep -q '^SIM_RESULT' "$LOG"; then
 else
   # Crash / hang / parse failure before the bot could report: show unique engine errors + crash dump.
   grep -E '^(SIM_|TELEMETRY|SCRIPT ERROR|ERROR|SHADER ERROR|CrashHandler|\[[0-9]+\] )|^\s+at: .*res://' "$LOG"     | awk '!seen[$0]++' | head -n "${SIM_MAX_LINES:-40}"
-  echo "SIM_RESULT FAIL code=$CODE reason=crash/timeout/no result (full log: $LOG)"
-  [ "$CODE" -eq 0 ] && CODE=4
+  echo "SIM_RESULT FAIL code=4 reason=crash/timeout/no result (engine exit $CODE, full log: $LOG)"
+  CODE=4
 fi
 exit $CODE

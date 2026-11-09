@@ -42,10 +42,10 @@ func setup(en: Enemies, lf: LightField, snd: Soundscape, isl: Island, wx: StormW
 	weather = wx
 
 
-## Detonate flame at `pos`. `scale` shrinks or grows radius and damage (a cask is 0.8, a lantern 0.9).
-func burst(pos: Vector3, scale: float = 1.0) -> void:
+## Detonate flame at `pos`. `size_mult` shrinks or grows radius and damage (a cask is 0.8, a lantern 0.9).
+func burst(pos: Vector3, size_mult: float = 1.0) -> void:
 	bursts += 1
-	var r: float = burst_radius * scale
+	var r: float = burst_radius * size_mult
 	var glare: FireBurst = FireBurst.new()
 	glare.name = "FireBurst"
 	glare.field = field
@@ -53,8 +53,8 @@ func burst(pos: Vector3, scale: float = 1.0) -> void:
 	glare.dps = 0.0
 	glare.occludable = false
 	glare.life = burst_light_time
-	glare.peak_energy = burst_light_energy * scale
-	glare.light_range = burst_light_range * scale
+	glare.peak_energy = burst_light_energy * size_mult
+	glare.light_range = burst_light_range * size_mult
 	add_child(glare)
 	glare.global_position = pos
 	FireFx.burst(self, pos, r)
@@ -66,7 +66,7 @@ func burst(pos: Vector3, scale: float = 1.0) -> void:
 			if to.length() > r:
 				continue
 			var away: Vector3 = Vector3(to.x, 0.0, to.z)
-			d.burst_hit(away, burst_damage * scale, burst_knock)
+			d.burst_hit(away, burst_damage * size_mult, burst_knock)
 	for n: Node in get_tree().get_nodes_in_group(BURNABLE):
 		var n3: Node3D = n as Node3D
 		if n3 == null or not n3.is_inside_tree():

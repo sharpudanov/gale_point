@@ -28,6 +28,7 @@ var props: IslandProps
 var buoys: BellBuoys
 var sandbox: Sandbox
 var session: SessionLog
+var overrides: TunableOverrides
 var _placed_flare: Flare
 
 ## Screenshot hotkey output folder (gitignored via .captures/).
@@ -39,12 +40,21 @@ var _screenshot_busy: bool = false
 
 func _ready() -> void:
 	shot = str(BootArgs.get_value("shot", ""))
+	var snap_dir: String = str(BootArgs.get_value("snap", ""))
+	if not snap_dir.is_empty():
+		var snapper: FrameSnapper = FrameSnapper.new()
+		snapper.setup(snap_dir, str(BootArgs.get_value("snap_frames", "")))
+		_add(snapper, "FrameSnapper")   # tools/capture.sh: saves the listed frames, then quits
 	if shot == "test":
 		TestShot.build(self)  # harness self-test (tools/capture.sh test)
 		return
 	InputSetup.ensure()
 	args = DebugArgs.parse(ShotPresets.defaults(shot))
 	GameRng.seed_with(args.seed)
+	# Harness experiments: --set=Class.property=value overrides @export tunables as nodes enter the tree.
+	overrides = TunableOverrides.new()
+	overrides.load_specs(BootArgs.get_all("set"))
+	overrides.attach(get_tree())
 	_build()
 	if shot.is_empty() and DisplayServer.get_name() != "headless":
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -319,6 +329,8 @@ func get_telemetry() -> Dictionary:
 		t["sandbox"] = sandbox.telemetry()
 	if session != null:
 		t["session"] = session.telemetry()
+	if overrides != null and not overrides.is_empty():
+		t["overrides"] = overrides.telemetry()
 	t["fx"] = post_fx.telemetry()
 	t["audio"] = soundscape.telemetry()
 	return t

@@ -29,6 +29,10 @@
 - `tools/capture.sh <preset> [frames]` — renders real frames to `.captures/<preset>/`.
 - `tools/polyhaven.sh` — used by asset-fetcher only.
 
+## Skills (.claude/skills/, tested templates inside)
+- **godot-ocean-weather**: Gerstner ocean shader + matching GDScript height, foam, mist, rain, lightning.
+- **moody-lighting**: AgX/fog/SSAO/sun/beam starting values, warm-vs-cold rule, never-list.
+
 ## Workflow per milestone
 1. Implement (small steps; hook must stay green).
 2. **playtester** agent: logic check with a fitting input plan + expectations.

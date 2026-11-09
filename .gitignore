@@ -10,6 +10,8 @@ export_credentials.cfg
 # Harness
 .captures/
 .claude/settings.local.json
+# godot-ai MCP client config: absolute per-machine paths (regenerate: Godot AI dock -> Configure)
+.mcp.json
 
 # OS / editor junk
 .DS_Store

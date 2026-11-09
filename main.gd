@@ -19,6 +19,7 @@ var weapons: WeaponHolder
 var light_field: LightField
 var trails: WetTrails
 var enemies: Enemies
+var waves: WaveDirector
 var projectiles: Node3D
 var soundscape: Soundscape
 var post_fx: PostFx
@@ -94,6 +95,10 @@ func _build() -> void:
 	if args.aim and enemies.first() != null:
 		player.aim_at(enemies.first().chest_position())
 
+	waves = _add(WaveDirector.new(), "WaveDirector") as WaveDirector
+	waves.enabled = not args.no_waves
+	waves.setup(clock, enemies, lighthouse.crate)
+
 	# The director runs after the clock (tree order) and pushes into everything built above.
 	add_child(director)
 	move_child(director, clock.get_index() + 1)
@@ -105,6 +110,7 @@ func _build() -> void:
 	player.hit.connect(post_fx.on_hit)
 	player.died.connect(post_fx.on_died)
 	player.died.connect(_on_player_died)
+	clock.won.connect(post_fx.on_won)
 
 
 ## --pre_trails: wet smears from the shore up to a spawn point, as if it had already glided in.
@@ -196,6 +202,7 @@ func get_telemetry() -> Dictionary:
 	t["weapon"] = weapons.telemetry()
 	t["flares"] = weapons.flares_telemetry(light_field.flares.size())
 	t["enemies"] = enemies.telemetry()
+	t["waves"] = waves.telemetry()
 	t["crate"] = lighthouse.crate.telemetry()
 	t["lighthouse"] = {
 		"lamp_on": lighthouse.lamp_on,

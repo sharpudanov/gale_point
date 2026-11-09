@@ -44,9 +44,10 @@ void fragment() {
 	// Tatters: in the lower band the cut-off rises toward the hem, eating notches out of it.
 	float band = clamp(1.0 - UV.y / tatter_band, 0.0, 1.0);
 	float cut = tatter_threshold * band * band;
-	// Dissolve: noise-thresholded, sweeping from the hem upward.
+	// Dissolve: low-frequency noise (big ragged patches, not speckle), sweeping from the hem upward.
+	float nd = texture(tatter_tex, UV * vec2(1.1, 0.7) + vec2(0.37, 0.11)).r;
 	float dis_cut = dissolve * 1.15 - (UV.y * 0.15);
-	float keep = step(cut, n) * step(dis_cut, n);
+	float keep = step(cut, n) * step(dis_cut, nd);
 	if (keep < 0.5) {
 		discard;
 	}

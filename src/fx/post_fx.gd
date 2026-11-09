@@ -15,9 +15,12 @@ const SHADER_PATH: String = "res://shaders/post_film.gdshader"
 @export_group("End card")
 @export var death_fade_time: float = 1.5
 @export var card_text_death: String = "The light went out."
+@export var card_text_dawn: String = "Dawn."
 @export var card_color: Color = Color(0.78, 0.80, 0.84)
 @export var card_alpha: float = 0.6
-@export var card_font_size: int = 36
+@export var card_font_size: int = 46
+@export var card_top: float = 0.30     ## card band, fraction of the screen height (clear sky above the horizon)
+@export var card_bottom: float = 0.42
 @export var card_fade_time: float = 2.0
 @export_group("Tally")
 @export var tally_color: Color = Color(0.82, 0.84, 0.88)
@@ -92,6 +95,9 @@ func _ready() -> void:
 	_card.add_theme_color_override("font_color", card_color)
 	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_card.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_card.add_theme_color_override("font_shadow_color", Color(0.05, 0.07, 0.10, 0.55))
+	_card.add_theme_constant_override("shadow_offset_y", 2)
+	_card.add_theme_constant_override("shadow_outline_size", 4)
 	_card.modulate.a = 0.0
 	add_child(_card)
 
@@ -118,6 +124,17 @@ func on_died() -> void:
 	if _dead_t < 0.0:
 		_dead_t = 0.0
 		_card.text = card_text_death
+
+
+## The night is over (NightClock.won): the "Dawn." card fades in over card_fade_time. No black fade.
+func on_won() -> void:
+	if _dead_t < 0.0 and _card_t < 0.0:
+		_card.text = card_text_dawn
+		_card.anchor_top = card_top      # the dawn card sits in the sky, above the horizon seam
+		_card.anchor_bottom = card_bottom
+		_card.offset_top = 0.0
+		_card.offset_bottom = 0.0
+		_card_t = 0.0
 
 
 ## An end card reads as "ready to restart" once it is fully shown.

@@ -20,7 +20,7 @@ extends Node
 @export var ambient_energy: Vector3 = Vector3(1.0, 1.3, 1.0)
 @export var exposure: Vector3 = Vector3(1.0, 1.05, 0.85)
 @export var hdri_energy: Vector3 = Vector3(0.22, 0.3, 0.85)
-@export var sky_desaturate: Vector3 = Vector3(0.6, 0.65, 0.5)
+@export var sky_desaturate: Vector3 = Vector3(0.6, 0.65, 0.65)
 @export var sky_reflect_calm: Color = Color(0.24, 0.26, 0.30)
 @export var sky_reflect_peak: Color = Color(0.30, 0.33, 0.39)
 @export var sky_reflect_dawn: Color = Color(0.55, 0.57, 0.62)
@@ -100,6 +100,7 @@ func _evaluate(delta: float) -> void:
 	island.set_wetness(_curve(wetness))
 	if soundscape != null:
 		soundscape.set_storm(ws, rr, ws_scale)
+		soundscape.set_dawn(_d)
 
 	values = {
 		"wind_speed": ws,

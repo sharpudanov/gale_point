@@ -9,6 +9,8 @@ const PRESETS: Dictionary = {
 	"lightning": "--night_t=200 --no_waves --flash_at=0.80 --player_at=0,7 --look=180,-3 --freeze_enemies --spawn_at=-8,32;-3,38;4,30;10,42;15,36",
 	"flare_fight": "--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-5 --place_flare=14 --spawn_at=-3,23;4,19;-13,28;11,30 --aim --fire_at=0.98",
 	"dawn": "--night_t=320 --no_waves --player_at=-6,-10 --look=270,2",
+	"dawn_sink": "--night_t=309 --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --spawn_at=-3,16;4,20;-8,26;9,30",
+	"dawn_card": "--night_t=319 --no_waves --player_at=-6,-10 --look=270,2",
 	"drowned_close": "--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --pre_trails --place_flare=18 --spawn_at=0.5,11;-3,16",
 }
 

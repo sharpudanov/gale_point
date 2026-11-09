@@ -62,6 +62,17 @@ func alive_count() -> int:
 	return n
 
 
+## Every Drowned node in the scene, including the ones still dissolving (the performance budget).
+func node_count() -> int:
+	return _list.size()
+
+
+## Dawn: every living Drowned sinks and dissolves over `duration` seconds.
+func sink_all(duration: float) -> void:
+	for d: Drowned in _list.duplicate():
+		d.dissolve_away(duration)
+
+
 func first() -> Drowned:
 	return _list[0] if not _list.is_empty() else null
 

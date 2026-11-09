@@ -53,8 +53,8 @@ static func paint_material() -> StandardMaterial3D:
 
 static func leather_material() -> StandardMaterial3D:
 	var m: StandardMaterial3D = StandardMaterial3D.new()
-	m.albedo_color = Color(0.11, 0.075, 0.05)
-	m.roughness = 0.75
+	m.albedo_color = Color(0.08, 0.055, 0.04)
+	m.roughness = 0.9
 	return m
 
 
@@ -177,8 +177,8 @@ static func rifle() -> Node3D:
 	swivel.outer_radius = 0.01
 	swivel.rings = 12
 	swivel.ring_segments = 6
-	var front_sw: Vector3 = Vector3(0.0, 0.034, -0.32)
-	var rear_sw: Vector3 = Vector3(0.0, -0.035, 0.56)
+	var front_sw: Vector3 = Vector3(0.0, 0.04, -0.32)
+	var rear_sw: Vector3 = Vector3(0.0, 0.03, 0.56)
 	_part(root, "SwivelFront", swivel, metal, front_sw, Vector3(0.0, 90.0, 0.0))
 	_part(root, "SwivelRear", swivel, metal, rear_sw, Vector3(0.0, 90.0, 0.0))
 	var segs: int = 8
@@ -186,8 +186,8 @@ static func rifle() -> Node3D:
 	for i: int in range(1, segs + 1):
 		var f: float = float(i) / segs
 		var p: Vector3 = front_sw.lerp(rear_sw, f)
-		p.y -= 0.17 * sin(PI * f)     # slack droop
-		p.x = -0.012 * sin(PI * f)
+		p.y -= 0.05 * sin(PI * f)     # slack droop (hugs the stock)
+		p.x = 0.0
 		var d: Vector3 = p - prev
 		var seg: MeshInstance3D = _part(root, "Sling%d" % i, _box(Vector3(0.025, 0.004, d.length() + 0.004)), leather, (prev + p) * 0.5)
 		seg.basis = Basis.looking_at(d.normalized(), Vector3.UP)

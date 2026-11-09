@@ -22,6 +22,7 @@ extends Node3D
 @export var tower_radius: float = 3.6
 @export var dissolve_time: float = 1.2
 @export var sink_depth: float = 0.6
+@export var dawn_sink_depth: float = 1.9   ## dawn: sink under the surface, not a twitch
 @export var trail_step: float = 0.9
 @export var moan_first: Vector2 = Vector2(0.0, 3.0)
 @export var moan_interval: Vector2 = Vector2(6.0, 14.0)
@@ -43,7 +44,7 @@ var state: String = "gliding"
 var speed: float = 0.0
 var lit: bool = false
 var revealed: bool = false
-var dying_by: String = ""   ## "rifle", "light", "contact" once dying
+var dying_by: String = ""   ## "rifle", "light", "contact", "dawn" once dying
 
 var _hub: Enemies
 var _heading: float = 0.0
@@ -60,6 +61,8 @@ var _trail_dist: float = 0.0
 var _vel: Vector3 = Vector3.ZERO
 var _flutter: float = 1.0
 var _spawn_xz: Vector2 = Vector2.ZERO
+var _dissolve_len: float = 1.2
+var _sink_len: float = 0.6
 
 
 func setup(hub: Enemies, enemy_id: int, xz: Vector2, emerged: bool) -> void:
@@ -270,18 +273,29 @@ func _die(by: String) -> void:
 	speed = 0.0
 	lit = false
 	revealed = false
+	_dissolve_len = dissolve_time
+	_sink_len = sink_depth
 	_hitbox.set_deferred("collision_layer", 0)
 	_drips.emitting = false
 	_hub.on_death(self, by)
 	_hub.trails.puddle(Vector3(global_position.x, _hub.island.height_at(global_position.x, global_position.z), global_position.z))
 
 
+## Dawn: sink and dissolve over `duration` seconds. Not a kill, not a contact.
+func dissolve_away(duration: float) -> void:
+	if state == "dying":
+		return
+	_die("dawn")
+	_dissolve_len = duration
+	_sink_len = dawn_sink_depth
+
+
 func _tick_dying() -> void:
-	var k: float = clampf(_state_t / dissolve_time, 0.0, 1.0)
+	var k: float = clampf(_state_t / _dissolve_len, 0.0, 1.0)
 	for mi: MeshInstance3D in _cloth:
 		mi.set_instance_shader_parameter("dissolve", k)
-	_body.position.y = -sink_depth * k
-	if _state_t >= dissolve_time:
+	_body.position.y = -_sink_len * k
+	if _state_t >= _dissolve_len:
 		_hub.forget(self)
 		queue_free()
 

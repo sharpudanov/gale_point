@@ -2,6 +2,8 @@ class_name Soundscape
 extends Node3D
 ## Ambient storm mix (SPEC §4.13): wind + rain loops (2D), surf loops at the shore (3D), thunder
 ## one-shots delayed after each lightning flash. Gains follow the storm curves.
+## Mix pass (M4): three buses (Ambience, Weapons, Voices) under a limited Master. A rifle crack
+## or thunder ducks the ambience for a moment so the loud events stay clear without being louder.
 
 @export var wind_db: Vector2 = Vector2(-24.0, -10.0)    ## at wind 3 m/s -> 13 m/s
 @export var wind_range: Vector2 = Vector2(3.0, 13.0)
@@ -19,6 +21,17 @@ extends Node3D
 @export var kill_thud_db: float = -4.0
 @export var moan_db: float = -2.0
 @export var moan_variants: int = 4
+@export_group("Mix")
+@export var ambience_bus_db: float = 0.0
+@export var weapons_bus_db: float = -1.0
+@export var voices_bus_db: float = -1.0
+@export var master_limit_db: float = -1.0       ## limiter ceiling on Master
+@export var voice_reverb_wet: float = 0.18
+@export var crack_duck_db: float = -7.0
+@export var thunder_duck_db: float = -4.0
+@export var duck_attack: float = 0.03           ## s to reach the duck depth
+@export var duck_release: float = 0.9           ## s to recover
+@export var dawn_swell_db: float = 2.0          ## ambience lift as the storm breaks (it is quiet then)
 
 var wind_gain: float = -80.0
 var rain_gain: float = -80.0
@@ -28,7 +41,10 @@ var rifle_cracks: int = 0
 var hiss_active: int = 0
 var kill_thuds: int = 0
 var moans_played: int = 0
+var duck_db: float = 0.0          ## current ambience duck (<= 0), for telemetry
 
+var _duck_target: float = 0.0
+var _dawn: float = 0.0
 var _wind: AudioStreamPlayer
 var _rain: AudioStreamPlayer
 var _surf: Array[AudioStreamPlayer3D] = []
@@ -44,7 +60,45 @@ var _thud_stream: AudioStreamWAV
 var _moan_streams: Array[AudioStreamWAV] = []
 
 
+const BUS_AMBIENCE: String = "Ambience"
+const BUS_WEAPONS: String = "Weapons"
+const BUS_VOICES: String = "Voices"
+
+
+## Find or create a bus (the buses outlive scene reloads, so never add one twice).
+static func _bus(bus_name: String) -> int:
+	var i: int = AudioServer.get_bus_index(bus_name)
+	if i < 0:
+		AudioServer.add_bus()
+		i = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(i, bus_name)
+		AudioServer.set_bus_send(i, "Master")
+	return i
+
+
+func _build_buses() -> void:
+	var amb: int = _bus(BUS_AMBIENCE)
+	var wpn: int = _bus(BUS_WEAPONS)
+	var voc: int = _bus(BUS_VOICES)
+	AudioServer.set_bus_volume_db(amb, ambience_bus_db)
+	AudioServer.set_bus_volume_db(wpn, weapons_bus_db)
+	AudioServer.set_bus_volume_db(voc, voices_bus_db)
+	if AudioServer.get_bus_effect_count(voc) == 0:
+		var rv: AudioEffectReverb = AudioEffectReverb.new()
+		rv.room_size = 0.7
+		rv.damping = 0.6
+		rv.wet = voice_reverb_wet
+		rv.dry = 1.0
+		AudioServer.add_bus_effect(voc, rv)
+	if AudioServer.get_bus_effect_count(0) == 0:
+		var lim: AudioEffectHardLimiter = AudioEffectHardLimiter.new()
+		lim.ceiling_db = master_limit_db
+		lim.pre_gain_db = 0.0
+		AudioServer.add_bus_effect(0, lim)
+
+
 func _ready() -> void:
+	_build_buses()
 	var synth: ProcAudio = ProcAudio.new()
 	_wind = _player2d("Wind", synth.wind())
 	_rain = _player2d("Rain", synth.rain())
@@ -56,6 +110,7 @@ func _ready() -> void:
 		p.stream = surf_stream
 		p.unit_size = 25.0
 		p.max_distance = 140.0
+		p.bus = BUS_AMBIENCE
 		p.position = Vector3(cos(a) * surf_radius, 0.5, sin(a) * surf_radius)
 		add_child(p)
 		_surf.append(p)
@@ -63,6 +118,7 @@ func _ready() -> void:
 	_thunder.name = "Thunder"
 	_thunder.stream = synth.thunder()
 	_thunder.volume_db = thunder_db
+	_thunder.bus = BUS_AMBIENCE
 	add_child(_thunder)
 	var crack: AudioStreamWAV = synth.rifle_crack()
 	for i: int in 2:
@@ -87,6 +143,7 @@ func _player2d(n: String, stream: AudioStream) -> AudioStreamPlayer:
 	p.name = n
 	p.stream = stream
 	p.volume_db = mute_db
+	p.bus = BUS_AMBIENCE
 	add_child(p)
 	return p
 
@@ -96,6 +153,7 @@ func _oneshot2d(n: String, stream: AudioStream, db: float) -> AudioStreamPlayer:
 	p.name = n
 	p.stream = stream
 	p.volume_db = db
+	p.bus = BUS_WEAPONS
 	add_child(p)
 	return p
 
@@ -113,6 +171,7 @@ func _play_pooled(pool: Array[AudioStreamPlayer], stream: AudioStream) -> void:
 ## Rifle shot (2D, loud). Counted for tests: headless runs use the dummy audio driver.
 func play_rifle_crack() -> void:
 	rifle_cracks += 1
+	duck(crack_duck_db)
 	_play_pooled(_crack_pool, _crack_pool[0].stream)
 
 
@@ -130,6 +189,7 @@ func play_flare_launch(pos: Vector3) -> void:
 	p.stream = _launch_stream
 	p.unit_size = 6.0
 	p.volume_db = launch_db
+	p.bus = BUS_WEAPONS
 	p.finished.connect(p.queue_free)
 	add_child(p)
 	p.global_position = pos
@@ -144,6 +204,7 @@ func make_hiss(parent: Node3D) -> AudioStreamPlayer3D:
 	p.unit_size = 6.0
 	p.max_distance = 120.0
 	p.volume_db = hiss_db
+	p.bus = BUS_WEAPONS
 	parent.add_child(p)
 	p.play(GameRng.randf() * 3.0)
 	return p
@@ -166,11 +227,13 @@ func play_kill_thud(pos: Vector3) -> void:
 ## A Drowned moan, 3D at the enemy (unit size 10, max distance 80 m). `variant` picks one of 4.
 func play_moan(pos: Vector3, variant: int) -> void:
 	moans_played += 1
-	_oneshot3d(_moan_streams[posmod(variant, _moan_streams.size())], pos, 10.0, moan_db, 80.0)
+	_oneshot3d(_moan_streams[posmod(variant, _moan_streams.size())], pos, 10.0, moan_db, 80.0, BUS_VOICES)
 
 
-func _oneshot3d(stream: AudioStream, pos: Vector3, unit: float, db: float, max_dist: float) -> void:
+func _oneshot3d(stream: AudioStream, pos: Vector3, unit: float, db: float, max_dist: float,
+		bus: String = BUS_WEAPONS) -> void:
 	var p: AudioStreamPlayer3D = AudioStreamPlayer3D.new()
+	p.bus = bus
 	p.stream = stream
 	p.unit_size = unit
 	p.volume_db = db
@@ -191,17 +254,34 @@ func set_storm(wind_speed: float, rain_ratio: float, wave_scale: float) -> void:
 		p.volume_db = surf_gain
 
 
+## Push the ambience down for a moment (deeper wins); it recovers over duck_release.
+func duck(db: float) -> void:
+	_duck_target = minf(_duck_target, db)
+
+
+## Dawn progress 0..1: the storm is gone, so the remaining ambience is lifted slightly.
+func set_dawn(d: float) -> void:
+	_dawn = clampf(d, 0.0, 1.0)
+
+
 ## Hooked to StormWeather.lightning_struck.
 func on_lightning() -> void:
 	_pending_thunder.append(GameRng.randf_range(thunder_delay.x, thunder_delay.y))
 
 
 func _physics_process(delta: float) -> void:
+	# Duck: fast attack toward the target, slow release back to 0 dB.
+	var rate: float = absf(_duck_target - duck_db) / maxf(duck_attack, 0.001) if _duck_target < duck_db 			else absf(duck_db) / maxf(duck_release, 0.001) + 3.0
+	duck_db = move_toward(duck_db, _duck_target, rate * delta)
+	if _duck_target < 0.0 and duck_db <= _duck_target + 0.01:
+		_duck_target = 0.0   # reached the depth: start releasing
+	AudioServer.set_bus_volume_db(_bus(BUS_AMBIENCE), ambience_bus_db + duck_db + dawn_swell_db * _dawn)
 	for i: int in range(_pending_thunder.size() - 1, -1, -1):
 		_pending_thunder[i] -= delta
 		if _pending_thunder[i] <= 0.0:
 			_pending_thunder.remove_at(i)
 			_thunder.play()
+			duck(thunder_duck_db)
 			thunders_played += 1
 
 
@@ -215,4 +295,6 @@ func telemetry() -> Dictionary:
 		"flare_hiss_active": hiss_active > 0,
 		"moans_played": moans_played,
 		"thunders": thunders_played,
+		"duck_db": snappedf(duck_db, 0.01),
+		"buses": AudioServer.bus_count,
 	}

@@ -1,7 +1,7 @@
 # Gale Point: Night Watch — Specification
 
 > Source of truth for design decisions. Code follows this file; change this file first.
-> Status: **M1 done** (island, sea, storm, walk). **M2 done** (weapons, light, resupply). **M3 done** (the Drowned; leftovers in �14). M4 next. All numbers are starting values: tune them through
+> Status: **M1 done** (island, sea, storm, walk). **M2 done** (weapons, light, resupply). **M3 done** (the Drowned; leftovers in §14). **M4 done** (waves, escalation, dawn, audio mix; final notes in §14). All numbers are starting values: tune them through
 > the listed `@export`s, then update this file when a value changes for good.
 
 ---
@@ -306,7 +306,9 @@ layer 1).
 | count | 3 | 5 | 7 | 9 | 11 | 14 |
 | spawn interval (s) | 3.0 | 2.5 | 2.0 | 1.6 | 1.3 | 1.0 |
 
-- `max_alive` is 14; spawns wait while the cap is reached. 49 in total.
+- `max_alive` is 14 (living Drowned, emerging included; ones that are dissolving don't count); spawns wait while the cap is reached, with no catch-up burst afterwards. 49 in total.
+- Each wave picks its sector centre with `GameRng` when it starts; a spawn is a uniform angle in ±35° of it and r 60–90 m.
+- `--night_t` skips the waves whose start has already passed; `waves.index` counts them as played.
 - A wave is *cleared* when all its spawned enemies are dead and none are pending.
 - At dawn, pending spawns are cancelled and the living Drowned sink and dissolve over 3 s.
 
@@ -359,6 +361,17 @@ ratios, mist density, lightning interval), wet_rock `wetness` and Soundscape gai
 | flare launch / hiss (20 s) | thump + bandpass noise 3–6 kHz with crackle 25/s; sputter fade | 3D at the flare, unit size 6 |
 | thunder | brown noise, 4 s, random rumble envelope, delay 0.3–2.0 s after the flash | 2D, −6 dB |
 | moans ×4 variants | saw 90–140 Hz with a pitch glide, 5 Hz vibrato, formant bandpasses 500/1500 Hz, breath noise; 1.8–3.2 s | 3D at the enemy, unit size 10, max distance 80 m |
+
+**Mix (M4).** Players are routed to three buses under Master, which carries a hard limiter (ceiling −1 dB):
+
+| Bus | Carries | Level | Effects |
+|---|---|---|---|
+| `Ambience` | wind, rain, surf, thunder | 0 dB (+2 dB as dawn arrives, because the storm is gone) | — |
+| `Weapons` | rifle crack, clicks, flare launch and hiss, kill thud | −1 dB | — |
+| `Voices` | Drowned moans | −1 dB | reverb, room 0.7, damping 0.6, wet 0.18 |
+
+- **Ducking:** a rifle crack pushes `Ambience` down −7 dB (attack 0.03 s, release 0.9 s); thunder pushes it −4 dB. Deeper wins. Exposed as `audio.duck_db`.
+- Buses are looked up by name before they are added, so a scene reload (Enter) never doubles them.
 
 Headless runs use the dummy audio driver, so tests count events (telemetry) rather than buffers.
 
@@ -578,11 +591,13 @@ enemies:   { alive:int, spawned:int, killed:int, killed_by_rifle:int, killed_by_
              lit_count:int, revealed_count:int, mean_speed_lit, mean_speed_dark, nearest_dist,
              reached_lighthouse:int,
              list:[ {id:int, pos:[x,y,z], hp, lit:bool, speed, state:"emerging|gliding|dying"} ]  (≤16, by id) }
-waves:     { index:int (0 before wave 1), total:int, state:"waiting|spawning|active|cleared|over", next_wave_t }
+waves:     { index:int (0 before wave 1), total:int, state:"waiting|spawning|active|cleared|over", next_wave_t,
+             pending:int (spawns still queued), peak_alive:int (most living Drowned at once) }
 crate:     { stocked:bool, uses:int, refills:int }
 lighthouse:{ lamp_on:bool, guttering:bool, beam_yaw }
 fx:        { vignette, damage_vignette, grain }
-audio:     { wind_gain, rain_gain, surf_gain, rifle_cracks:int, kill_thuds:int, flare_hiss_active:bool, moans_played:int }
+audio:     { wind_gain, rain_gain, surf_gain, rifle_cracks:int, kill_thuds:int, flare_hiss_active:bool, moans_played:int,
+             thunders:int, duck_db (current ambience duck, <= 0), buses:int }
 ```
 - `flash_active`: the lightning reveal window (0.6 s after a strike) is open.
 - `revealed_count`: Drowned lit by lightning right now.
@@ -603,6 +618,8 @@ audio:     { wind_gain, rain_gain, surf_gain, rifle_cracks:int, kill_thuds:int, 
 | `lightning` | `--night_t=200 --no_waves --flash_at=0.80 --player_at=0,7 --look=180,-3 --freeze_enemies --spawn_at=-8,32;-3,38;4,30;10,42;15,36` | cold whole-scene flash at frame 30, every Drowned revealed as a silhouette, no bloom on foam, sky clouds lit |
 | `flare_fight` | `--night_t=150 --no_waves --no_lightning --player_at=0,7 --look=180,-5 --place_flare=14 --spawn_at=-3,23;4,19;-13,28;11,30 --aim --fire_at=0.98` | warm flare vs. cold scene, flare glow in fog, flare shadows, two lit and two dark Drowned, muzzle flash on frame 30, weathered viewmodel and sway |
 | `dawn` | `--night_t=320 --no_waves --player_at=-6,-10 --look=270,2` | cold sunrise from +X, fog lifted, calmer sea, no rain, nothing warm except the lamp |
+| `dawn_sink` | `--night_t=309 --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --spawn_at=-3,16;4,20;-8,26;9,30` | the living Drowned sink and dissolve over 3 s as the storm breaks (mid frame about 1/3 sunk, last frame about 2/3) |
+| `dawn_card` | `--night_t=319 --no_waves --player_at=-6,-10 --look=270,2`, captured with **120 frames** (the clock hits `won` at 1 s, the card is full at 3 s) | the "Dawn." card: small serif, about 60% opacity, centred, over the cold sunrise; nothing else on screen |
 | `drowned_close` | `--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --pre_trails --place_flare=18 --spawn_at=0.5,11;-3,16` | cloth flutter, tattered hem, faint pale face, silhouette against the flare glow, wet trail, drips |
 
 ---
@@ -645,7 +662,8 @@ audio:     { wind_gain, rain_gain, surf_gain, rifle_cracks:int, kill_thuds:int, 
 ]
 ```
 - **M1:** `--frames=3900 --night_len=60 --god --no_waves --expect="time.phase==won" --expect="storm.fog_density<=0.0035" --expect="storm.rain_ratio<=0.01" --expect="storm.wave_scale<=0.65" --expect="time.dawn_progress>=1"`
-- **M4:** the same args without `--no_waves`, plus `--expect="waves.index==6" --expect="enemies.spawned>=30" --expect="enemies.alive==0" --expect="player.alive==true"`
+- **M4:** the same args without `--no_waves`, plus `--expect="waves.index==6" --expect="enemies.spawned>=26" --expect="enemies.alive==0" --expect="player.alive==true" --expect="waves.peak_alive<=14" --expect="fx.card==Dawn."`
+  (The spawn threshold is 26, not 30: with `--night_len=60` the schedules shrink but a Drowned still needs 20–28 s to cross 60–90 m, so the 14-cap holds spawns back. The real 300 s night spawns all 49.)
 - Derivation: f600 is u=0.167 (s=0.077, fog 0.0094). f2700 is u=0.75 (s=0.844, fog 0.0232, wave 1.21). Dawn runs 60–64 s.
 
 ### `rifle.json` (M2): fire, bolt gating, recoil, reload, no fire while sprinting, ADS
@@ -803,7 +821,7 @@ audio:     { wind_gain, rain_gain, surf_gain, rifle_cracks:int, kill_thuds:int, 
 `--frames=480 --no_waves --no_lightning --player_at=-20,-20 --spawn_at=0,20 --expect="enemies.reached_lighthouse==1" --expect="player.hp==2" --expect="lighthouse.guttering==true" --expect="enemies.alive==0"`
 
 ### `full_night.json` (M4): `[]`
-`SIM_TIMEOUT=600 tools/sim.sh --plan=res://tests/plans/full_night.json --frames=19500 --every=1200 --god --expect="time.phase==won" --expect="waves.index==6" --expect="enemies.alive==0" --expect="player.alive==true"`
+`SIM_TIMEOUT=600 tools/sim.sh --plan=res://tests/plans/full_night.json --frames=19500 --every=1200 --god --expect="time.phase==won" --expect="waves.index==6" --expect="enemies.alive==0" --expect="player.alive==true" --expect="waves.peak_alive<=14" --expect="fx.card==Dawn." --expect="enemies.spawned>=40"`
 
 ---
 
@@ -1055,3 +1073,35 @@ invulnerability applies to both. `lighthouse_reach` is tight: the gutter ends ab
 - The lightning flash is still fairly flat grey. Ideas: a raking flash light (rotation -35 deg, shadows on), scaling the sky `flash` by 0.6, `fog_sky_affect` 0.7 to hide the horizon seam.
 - Viewmodel: the rust texture on the receiver is blotchy at close range and the bipod/forearm tube is plain. The flare haze covers about 40% of the `flare_fight` frame (`flare light_energy` -15% would keep more slate).
 - Engine: "11 ObjectDB instances leaked at exit" on shutdown after long sims (static material caches in `DrownedBuilder`). Harmless.
+
+### M4: waves, escalation, dawn, audio mix (final notes)
+Added: `WaveDirector` (`src/enemies/wave_director.gd`, §4.8), crate restock on `wave_started` / `wave_cleared`, dawn sink
+(`Enemies.sink_all()` / `Drowned.dissolve_away()`), the "Dawn." card (`PostFx.on_won()`), audio buses and ducking (§4.13),
+the `waves` / `audio` telemetry additions (§8) and the `dawn_sink` / `dawn_card` presets (§9). The §5.2 curves were already
+complete from M1. `tests/plans/full_night.json` is `[]` on purpose.
+
+| Where | Value | Spec -> tuned | Why |
+|---|---|---|---|
+| `escalation` M4 args | `enemies.spawned` | >= 30 -> **>= 26** | with `--night_len=60` the Drowned still need 20-28 s to cross 60-90 m, so the cap of 14 holds spawns back (measured 28-29). The real 300 s night spawns all 49 (peak alive 14). |
+| `ViewmodelBuilder.rifle()` sling | droop / swivels / sideways bow | 0.17 -> **0.05** (as asked); swivels (y 0.034, -0.035) -> **(0.04, 0.03)**; bow 0.012 -> **0** | at 0.05 the strap still hung about 5 cm under the stock and read as a bipod leg. Leather albedo (0.11,0.075,0.05) -> (0.08,0.055,0.04), roughness 0.75 -> 0.9. |
+| `drowned_cloth.gdshader` dissolve | noise | `tatter_tex` UV x (3,2) -> **x (1.1,0.7) + offset** | the fine noise made a screen-door speckle; the low-frequency noise erodes in ragged patches. This also applies to normal kills. |
+| `Drowned.dawn_sink_depth` (new) | | - -> **1.9 m** | at dawn the body goes under the surface (kills keep `sink_depth` 0.6) |
+| `PostFx` dawn card | font size / position | 36 -> **46**; centred -> **band 0.30-0.42 of screen height**; dark 55% shadow | grey-on-grey, and it sat on the horizon seam. The death card keeps its centred position. |
+| `StormDirector.sky_desaturate` dawn | | 0.5 -> **0.65** | a faint beige/pink cast at the left horizon |
+| Audio | | - | `Ambience` / `Weapons` / `Voices` buses, hard limiter -1 dB on Master, crack duck -7 dB, thunder duck -4 dB, voice reverb 0.18, +2 dB ambience at dawn |
+
+Budgets (all hold): <= 14 living Drowned (`waves.peak_alive` is 14 in `full_night`; dissolving ones are not counted, so a few
+more nodes can exist for about 1.2 s), 160 decals (`WetTrails.pool_size`), rain 6000, spray 900. `project.godot` already had
+uncommitted changes before M4 (the `[rendering]` section was dropped); it is left out of the M4 commit.
+
+M4 verification: all 14 plans pass (smoke, move, escalation M4 args, rifle, flare_fire, crate M4 args, rifle_dark, rifle_lit,
+flare_light, beam, lightning, damage_death, lighthouse_reach, full_night). The art-director reviewed 8 presets; 1 fix round
+plus a sling follow-up, all re-checked by eye.
+
+### M4: leftovers
+- `full_night` does nothing, so it can't show restocks over a whole night. Only `crate` (M4 args) covers a restock (`refills==1`); a plan that walks to the crate between waves would cover more.
+- The dawn Drowned still dissolve unevenly (patches, not a smooth fade). A soft alpha edge would need the cloth shader to go transparent.
+- The rifle strap still reads blue-grey in cold light, and the viewmodel is still boxy (see M2).
+- The dawn card is a plain `Label`: no fade-out and no hint that Enter restarts (by design, no prompt text).
+- Still open from earlier milestones: horizon seam, flat lightning and dawn, unreadable wet trails (M3 (e)).
+

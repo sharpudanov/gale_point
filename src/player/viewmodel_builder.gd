@@ -170,6 +170,7 @@ static func rifle() -> Node3D:
 	bolt.add_child(bolt_mesh)
 	for part: String in ["bolt_action_rifle_7_62_bolt_a", "bolt_action_rifle_7_62_bolt_b"]:
 		var n: Node3D = gun.get_node(part) as Node3D
+		n.owner = null   # it leaves the imported scene: avoids Godot's "owner inconsistent" warning
 		gun.remove_child(n)
 		bolt_mesh.add_child(n)
 		n.position = Vector3.ZERO

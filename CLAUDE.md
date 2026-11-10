@@ -17,7 +17,12 @@
   (`[debug]` in `project.godot`). Give a Variant a type before using it (`var d: Dictionary = value`).
 - **Pure-code scenes:** `main.tscn` is a bare Node3D + `main.gd`. All other nodes, materials,
   environment, lights and UI are built in GDScript via `class_name` scripts in `res://src/`.
-  Never hand-edit or create `.tscn` files for content.
+  Never hand-edit or create `.tscn` files for content. The one exception is `map/layout.tscn`, the single
+  source of positions (`MapLayout`): Marker3D braziers, casks, winch and buoys plus rock glTF instances. It holds
+  positions only, no scripts or logic (its marker meshes and `EditorBackdrop` exist only for dragging). The user
+  edits it in the Godot editor; Claude edits marker `transform` lines as text and checks with
+  `tools/capture.sh map 2` and `layout.problem_count`. After the island shape changes, refresh
+  `map/preview/map.png` (last frame of `tools/capture.sh map 2 --map_plain`).
 - Tunables are `@export` vars (with sensible defaults), never magic numbers buried in logic.
 - Shaders live in `.gdshader` files, loaded with `load()`; no inline shader code strings.
 - `main.get_telemetry() -> Dictionary` must expose the state tests need (JSON-serializable).

@@ -2,16 +2,10 @@ class_name IslandProps
 extends Node3D
 ## Places the interactive island props (DESIGN_LOG iteration 1, "reasons to leave the doorway"): signal
 ## braziers on the shoulders of the island, oil casks beside them and in the front field, and the beam winch
-## behind the tower. Angles are XZ angles (x = cos, z = sin; the door faces +Z = 90 deg). Every prop is put
-## on the first patch of solid ground found walking inward from `search_from` along its angle.
+## behind the tower. Where they stand comes from map/layout.tscn (MapLayout: X, Z and cask yaw); the height is
+## Island.height_at(). LayoutCheck reports props on low ground, off the walkable area or too close together.
 
-@export var brazier_angles_deg: PackedFloat32Array = PackedFloat32Array([30.0, 150.0, 215.0, 325.0])
-@export var brazier_radius: float = 25.0
-@export var cask_front_angles_deg: PackedFloat32Array = PackedFloat32Array([68.0, 112.0])
-@export var cask_front_radius: float = 18.0
-@export var cask_beside_brazier: float = 2.6   ## m to the side of each brazier
-@export var min_ground: float = 1.2            ## props never stand lower than this (the surf line)
-@export var winch_pos: Vector3 = Vector3(0.0, 0.0, -3.75)
+@export var min_ground: float = 1.2            ## props never stand lower than this (the surf line; LayoutCheck)
 
 var braziers: Array[Brazier] = []
 var casks: Array[OilCask] = []
@@ -23,53 +17,44 @@ var _island: Island
 func build(island: Island, fire: FireSystem, enemies: Enemies, field: LightField, audio: Soundscape,
 		weather: StormWeather, lighthouse: Lighthouse, player: Player) -> void:
 	_island = island
-	for a: float in brazier_angles_deg:
-		var p: Vector3 = _ground_point(deg_to_rad(a), brazier_radius)
-		var b: Brazier = Brazier.new()
-		b.name = "Brazier%d" % braziers.size()
-		b.enemies = enemies
-		b.field = field
-		b.audio = audio
-		b.weather = weather
-		add_child(b)
-		b.global_position = p
-		braziers.append(b)
-		var side: Vector3 = Vector3(-sin(deg_to_rad(a)), 0.0, cos(deg_to_rad(a))) * cask_beside_brazier
-		_add_cask(Vector3(p.x + side.x, 0.0, p.z + side.z), fire, enemies, field)
-	for a: float in cask_front_angles_deg:
-		_add_cask(_ground_point(deg_to_rad(a), cask_front_radius), fire, enemies, field)
+	var brazier_pts: PackedVector2Array = MapLayout.brazier_points()
+	var cask_xfs: Array[Transform3D] = MapLayout.cask_transforms()
+	# Child order (process order) stays Brazier0, OilCask0, Brazier1, OilCask1, ..., then the other casks.
+	for i: int in maxi(brazier_pts.size(), cask_xfs.size()):
+		if i < brazier_pts.size():
+			var p: Vector2 = brazier_pts[i]
+			var b: Brazier = Brazier.new()
+			b.name = "Brazier%d" % i
+			b.enemies = enemies
+			b.field = field
+			b.audio = audio
+			b.weather = weather
+			add_child(b)
+			b.global_position = Vector3(p.x, island.height_at(p.x, p.y), p.y)
+			braziers.append(b)
+		if i < cask_xfs.size():
+			_add_cask(cask_xfs[i], fire, enemies, field)
+	var w: Vector2 = MapLayout.winch_point()
 	winch = BeamWinch.new()
 	winch.name = "BeamWinch"
 	winch.lighthouse = lighthouse
 	winch.player = player
 	winch.audio = audio
 	add_child(winch)
-	winch.global_position = Vector3(winch_pos.x, island.height_at(winch_pos.x, winch_pos.z), winch_pos.z)
+	winch.global_position = Vector3(w.x, island.height_at(w.x, w.y), w.y)
 
 
-func _add_cask(xz: Vector3, fire: FireSystem, enemies: Enemies, field: LightField) -> void:
+func _add_cask(xf: Transform3D, fire: FireSystem, enemies: Enemies, field: LightField) -> void:
 	var c: OilCask = OilCask.new()
 	c.name = "OilCask%d" % casks.size()
 	c.fire = fire
 	c.enemies = enemies
 	c.field = field
 	add_child(c)
-	c.global_position = Vector3(xz.x, _island.height_at(xz.x, xz.z) - 0.03, xz.z)
-	c.rotation.y = float(casks.size()) * 1.37
+	var p: Vector3 = xf.origin
+	c.global_position = Vector3(p.x, _island.height_at(p.x, p.z) - 0.03, p.z)
+	c.rotation.y = xf.basis.get_euler().y
 	casks.append(c)
-
-
-## First point at or above min_ground walking inward from `r` along angle `a`.
-func _ground_point(a: float, r: float) -> Vector3:
-	var d: float = r
-	while d > 4.0:
-		var x: float = cos(a) * d
-		var z: float = sin(a) * d
-		var h: float = _island.height_at(x, z)
-		if h >= min_ground:
-			return Vector3(x, h, z)
-		d -= 0.5
-	return Vector3(cos(a) * d, _island.height_at(cos(a) * d, sin(a) * d), sin(a) * d)
 
 
 ## WaveDirector.wave_started: fresh casks, re-fuelled braziers, a winch charge.

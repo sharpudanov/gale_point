@@ -77,7 +77,9 @@ There is no jump; Space is unbound on purpose.
 
 ## 3. Architecture (pure code)
 
-`main.tscn` is a bare Node3D with `main.gd`; nothing else lives in a `.tscn`. Every system is a
+`main.tscn` is a bare Node3D with `main.gd`. The only other scene is `map/layout.tscn`: where things stand
+(markers and rock instances; no scripts, logic or game materials), read by `MapLayout` and edited by dragging in
+the Godot editor (§4.2). Every system is a
 `class_name` script in `res://src/`. `main.gd` builds them in this order and wires references
 through explicit `setup(...)` calls: no autoloads, and no `get_node` paths between systems.
 (The one autoload in `project.godot`, `_mcp_game_helper`, belongs to the optional godot-ai editor addon in
@@ -119,7 +121,10 @@ Main (Node3D, main.gd)        BootArgs → DebugArgs → GameRng.seed → ShotPr
 | `src/world/storm_director.gd` | `StormDirector` | evaluates §5.2 each physics tick and pushes values |
 | `src/world/ocean.gd` | `Ocean` | ocean-weather template; `wave_scale` multiplies steepness; `get_height()` |
 | `src/world/storm_weather.gd` | `StormWeather` | ocean-weather template plus spray and mist patches; signal `lightning_struck` |
-| `src/world/island.gd` | `Island` | heightmap mesh and collision, `height_at(x, z)`, rock scatter |
+| `src/world/island.gd` | `Island` | heightmap mesh and collision, `height_at(x, z)`, `walkable_radius(a)`, rocks from the layout |
+| `src/world/map_layout.gd` | `MapLayout` | static reader of `map/layout.tscn`: prop, buoy and rock positions |
+| `src/world/layout_check.gd` | `LayoutCheck` | layout problems for telemetry and the map view (§4.2) |
+| `src/harness/map_view.gd` | `MapView` | `--map` top-down tool view (§7) |
 | `src/world/lighthouse.gd` | `Lighthouse` | tower mesh (lathe ArrayMesh with door gap), lamp, beam, `gutter()` |
 | `src/world/ammo_crate.gd` | `AmmoCrate` | stock state, `use(player)` |
 | `src/world/wet_trails.gd` | `WetTrails` | `stamp(pos, yaw)` from a pool of 160 Decals |
@@ -179,11 +184,15 @@ Numbers here are starting values; the `@export` default in code is the truth.
 | `noise_freq` / `noise_octaves` / `noise_amp` | 0.045 / 4 (FBM simplex) / 1.6 m, faded in over r 6–14 m |
 | `coast_warp_amp` / `coast_warp_freq` | 6.0 m / 0.9 cycles per radian band |
 | `shore_block_height` | 0.6 m (the player can't step onto ground below this) |
-| `rock_count` / `rock_radius` / `rock_scale` | 30 / r 30–48 m / 0.8–3.5 |
 
 - Height: `h = plateau_height·(1 − smoothstep(plateau_radius, shore_radius, r')) + seabed_depth·smoothstep(shore_radius−2, seabed_radius, r') + noise`, where `r' = r + warp(angle)`.
 - Material: `wet_rock.gdshader` (§6.3). Collision: `HeightMapShape3D`. `height_at(x, z)` samples the same function.
 - Rocks: Poly Haven models (§11) with convex collision. Their glTF materials get `albedo_color ×0.45` and `roughness 0.3` (wet).
+- Layout (`map/layout.tscn`, read by `MapLayout`): braziers, oil casks (marker yaw = cask yaw), the beam winch,
+  bell buoys and the 30 rocks (glTF instance, rotation, scale) stand where its nodes are. Only X, Z, yaw and scale
+  are read; every height comes from `height_at()`. The layout is authored for the default seed (the terrain
+  noise is seeded): another `--seed` moves the shore under it. Child order is the label order (B0, C0, Buoy0...).
+  The retired random rock scatter's GameRng draws are still made and discarded (determinism).
 - Layout rules (`LayoutCheck`, telemetry `layout`, smoke expects 0 problems): braziers, casks and the winch stand on
   ground ≥ `IslandProps.min_ground`, inside the walkable boundary (`Island.walkable_radius`: per angle, the
   last radius before the ground first drops below `shore_block_height`), outside the tower plinth, and at least

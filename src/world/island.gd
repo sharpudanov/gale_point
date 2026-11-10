@@ -22,16 +22,12 @@ const TEX_DIR: String = "res://assets/textures/dark_rock_02/"
 @export var coast_warp_fade: Vector2 = Vector2(8.0, 20.0)
 @export var shore_block_height: float = 0.6
 @export var edge_drop: float = -15.0  ## outermost vertex ring sinks so the mesh edge never shows
-@export var rock_count: int = 30
-@export var rock_radius: Vector2 = Vector2(30.0, 48.0)
-@export var rock_scale: Vector2 = Vector2(0.8, 3.5)
 @export var rock_albedo_mult: float = 0.45
 @export var rock_roughness: float = 0.3
-@export var rock_models: PackedStringArray = PackedStringArray([
-	"res://assets/models/boulder_01/boulder_01_1k.gltf",
-	"res://assets/models/rock_09/rock_09_1k.gltf",
-	"res://assets/models/rock_07/rock_07_1k.gltf",
-])
+
+## The retired random rock scatter (rocks now come from MapLayout): its draw count is kept for determinism.
+const LEGACY_ROCK_DRAWS: int = 30
+const LEGACY_ROCK_MODELS: int = 3
 
 var rock_mat: ShaderMaterial
 var rocks: Array[Node3D] = []
@@ -167,27 +163,31 @@ func set_wetness(w: float) -> void:
 	rock_mat.set_shader_parameter("wetness", w)
 
 
+## Rocks stand where map/layout.tscn puts them (MapLayout): its X, Z, rotation and scale; y = ground - 0.25·scale.
 func _scatter_rocks() -> void:
-	var scenes: Array[PackedScene] = []
-	for path: String in rock_models:
-		var ps: PackedScene = load(path) as PackedScene
-		if ps != null:
-			scenes.append(ps)
-	if scenes.is_empty():
-		return
+	# The old random scatter drew 7 GameRng values per rock. They are still drawn, in the same order, and
+	# discarded, so every later seeded event stays where it was (DESIGN_LOG principle 8).
+	for i: int in LEGACY_ROCK_DRAWS:
+		GameRng.randi_range(0, LEGACY_ROCK_MODELS - 1)
+		GameRng.randf_range(0.0, TAU)
+		GameRng.randf_range(30.0, 48.0)
+		GameRng.randf()
+		GameRng.randf_range(-0.2, 0.2)
+		GameRng.randf_range(0.0, TAU)
+		GameRng.randf_range(-0.2, 0.2)
 	var shapes: Dictionary = {}
-	for i: int in rock_count:
-		var idx: int = GameRng.randi_range(0, scenes.size() - 1)
-		var a: float = GameRng.randf_range(0.0, TAU)
-		var r: float = GameRng.randf_range(rock_radius.x, rock_radius.y)
-		var s: float = lerpf(rock_scale.x, rock_scale.y, pow(GameRng.randf(), 1.6))
-		var x: float = cos(a) * r
-		var z: float = sin(a) * r
-		var rock: Node3D = scenes[idx].instantiate() as Node3D
+	var rock_list: Array[Dictionary] = MapLayout.rocks()
+	for i: int in rock_list.size():
+		var ps: PackedScene = load(str(rock_list[i]["scene"])) as PackedScene
+		if ps == null:
+			push_error("Island: rock scene %s failed to load" % str(rock_list[i]["scene"]))
+			continue
+		var xf: Transform3D = rock_list[i]["xform"]
+		var s: float = xf.basis.get_scale().x
+		var rock: Node3D = ps.instantiate() as Node3D
 		rock.name = "Rock%d" % i
-		rock.scale = Vector3.ONE * s
-		rock.rotation = Vector3(GameRng.randf_range(-0.2, 0.2), GameRng.randf_range(0.0, TAU), GameRng.randf_range(-0.2, 0.2))
-		rock.position = Vector3(x, height_at(x, z) - 0.25 * s, z)
+		rock.transform = xf
+		rock.position.y = height_at(xf.origin.x, xf.origin.z) - 0.25 * s
 		add_child(rock)
 		rocks.append(rock)
 		for mi: MeshInstance3D in _mesh_instances(rock):

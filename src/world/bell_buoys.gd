@@ -7,8 +7,6 @@ extends Node3D
 
 const METAL_DIR: String = "res://assets/textures/rusty_metal_02/rusty_metal_02_%s_1k.jpg"
 
-@export var count: int = 6
-@export var ring_radius: float = 47.0
 @export var buoy_scale: float = 1.6
 @export var stroke_gap: float = 1.2
 @export var swing_deg: float = 25.0
@@ -59,11 +57,11 @@ func _ready() -> void:
 	bronze.albedo_color = Color(0.22, 0.19, 0.13)
 	bronze.metallic = 0.85
 	bronze.roughness = 0.4
-	for i: int in count:
-		var a: float = TAU * (float(i) + 0.5) / count
+	var pts: PackedVector2Array = MapLayout.buoy_points()   # map/layout.tscn
+	for i: int in pts.size():
 		var b: Node3D = Node3D.new()
 		b.name = "Buoy%d" % i
-		b.position = Vector3(cos(a) * ring_radius, 0.0, sin(a) * ring_radius)
+		b.position = Vector3(pts[i].x, 0.0, pts[i].y)
 		b.scale = Vector3.ONE * buoy_scale
 		add_child(b)
 		# Hull: a squat float with a cone skirt.

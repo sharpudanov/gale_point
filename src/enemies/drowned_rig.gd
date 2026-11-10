@@ -4,6 +4,7 @@ extends RefCounted
 ## shader, so it walks, flinches and claws instead of gliding. Imported, never modelled here: the only
 ## added geometry is two eye spheres on the head bone for the searing glow.
 
+const SCENE: String = "res://scenes/drowned.tscn"   ## the body as used in game; the code below is its fallback
 const MODEL: String = "res://assets/animations/ual2/ual2.glb"
 const CLIP_WALK: StringName = &"Zombie_Walk_Fwd"
 const CLIP_IDLE: StringName = &"Zombie_Idle"
@@ -35,6 +36,9 @@ static func material() -> ShaderMaterial:
 ## Body root facing -Z, feet at y = 0, `height` metres tall in the rest pose. Meshes are tagged like
 ## DrownedBuilder's: meta "cloth" on the body, meta "glow" = "eye" on the eyes.
 static func build(height: float) -> Node3D:
+	var view: Node3D = ModelKit.spawn(SCENE)
+	if view != null:
+		return view   # res://scenes/drowned.tscn: restyle, re-pose or swap the body in the editor
 	var root: Node3D = Node3D.new()
 	root.name = "DrownedBody"
 	var model: Node3D = ModelKit.spawn(MODEL)

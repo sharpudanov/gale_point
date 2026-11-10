@@ -1,0 +1,47 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://shaders/drowned_cloth.gdshader" id="1_xnkce"]
+[ext_resource type="Texture2D" path="res://assets/textures/hessian_230/hessian_230_nor_gl_1k.jpg" id="2_pjhma"]
+[ext_resource type="Texture2D" path="res://assets/textures/hessian_230/hessian_230_rough_1k.jpg" id="3_p6pah"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_suy0s"]
+seed = 11
+frequency = 0.035
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_1qlh0"]
+width = 256
+height = 256
+noise = SubResource("FastNoiseLite_suy0s")
+seamless = true
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_xnkce")
+shader_parameter/cloth_color = null
+shader_parameter/roughness = null
+shader_parameter/specular = null
+shader_parameter/wind_dir = null
+shader_parameter/wind_strength = null
+shader_parameter/flutter_amp = null
+shader_parameter/flutter_freq = null
+shader_parameter/flutter_wavelength = null
+shader_parameter/cloth_motion = 0.0
+shader_parameter/hem_weight_pow = null
+shader_parameter/tatter_tex = SubResource("NoiseTexture2D_1qlh0")
+shader_parameter/tatter_threshold = 0.0
+shader_parameter/tatter_band = null
+shader_parameter/detail_normal = ExtResource("2_pjhma")
+shader_parameter/detail_rough = ExtResource("3_p6pah")
+shader_parameter/detail_tiling = null
+shader_parameter/detail_normal_depth = null
+shader_parameter/ember_color = null
+shader_parameter/ember_energy = null
+shader_parameter/rim_power = null
+shader_parameter/crack_tiling = null
+shader_parameter/crack_width_min = null
+shader_parameter/crack_width_max = null
+shader_parameter/crack_patch_full_hp = null
+shader_parameter/crack_patch_dying = null
+shader_parameter/crack_strength_full_hp = null
+shader_parameter/crack_strength_dying = null
+shader_parameter/rim_strength = null

@@ -114,6 +114,7 @@ var lantern: CaptainLantern
 var _hub: Enemies
 var _heading: float = 0.0
 var _body: Node3D
+var water: DrownedWater
 var _rigged: bool = false
 var _anim: AnimationPlayer
 var _cloth: Array[MeshInstance3D] = []
@@ -205,6 +206,12 @@ func _ready() -> void:
 	_hitbox.add_child(shoulders)
 	add_child(_hitbox)   # on the root, not _body: _body is animated every frame and would lag the physics broadphase
 	_build_drips()
+	water = DrownedWater.new()
+	water.name = "Water"
+	water.drowned = self
+	water.ocean = _hub.ocean
+	water.island = _hub.island
+	add_child(water)
 	_build_steam()
 	_build_embers()
 	if kind == "captain":

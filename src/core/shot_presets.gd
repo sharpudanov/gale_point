@@ -24,7 +24,8 @@ const PRESETS: Dictionary = {
 	"overdrive": "--night_t=150 --no_waves --no_lightning --player_at=9,-5 --look=10,-4 --overdrive --freeze_enemies --spawn_at=-3,-44;4,-48;0,-52",
 	"shove": "--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-12 --freeze_enemies --spawn_at=0,9.3 --spawn_hp=60 --shove_at=0.85",
 	"map": "--night_t=15 --no_waves --no_lightning --map",
-	"drowned_dark": "--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --spawn_at=0.4,10;-2.5,13",
+	"sea_entrance": "--night_t=120 --no_waves --no_lightning --player_at=30,12 --look=265,-4 --spawn_at=47,11;53,16;59,7",
+	"drowned_dark":"--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --spawn_at=0.4,10;-2.5,13",
 	"drowned_close":"--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --pre_trails --place_flare=18 --spawn_at=0.5,11;-3,16",
 }
 

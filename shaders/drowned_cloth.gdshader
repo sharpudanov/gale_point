@@ -17,7 +17,7 @@ uniform float flutter_wavelength = 0.9;
 uniform float hem_weight_pow = 2.0;   // UV.y is height (0 hem, 1 hood tip): the upper body holds its shape
 uniform sampler2D tatter_tex : repeat_enable, filter_linear_mipmap;   // mipmaps: thin cracks must not sparkle at range
 uniform float tatter_threshold = 0.6;
-uniform float tatter_band = 0.22;
+uniform float tatter_band = 0.3;
 uniform sampler2D detail_normal : hint_normal, repeat_enable, filter_linear_mipmap;
 uniform sampler2D detail_rough : hint_default_white, repeat_enable, filter_linear_mipmap;
 uniform vec2 detail_tiling = vec2(7.0, 4.0);
@@ -25,14 +25,14 @@ uniform float detail_normal_depth = 0.8;
 uniform vec3 ember_color : source_color = vec3(1.0, 0.55, 0.22);
 uniform float ember_energy = 2.2;
 uniform float rim_power = 5.0;
-uniform vec2 crack_tiling = vec2(2.0, 1.4);   // few long veins: a fine pattern reads as glitter
+uniform vec2 crack_tiling = vec2(1.0, 0.9);   // few long veins: a fine pattern reads as glitter
 uniform float crack_width_min = 0.02;    // crack half-width in noise units at full hp
 uniform float crack_width_max = 0.06;    // ... and at 0 hp
-uniform float crack_patch_full_hp = 0.5;   // patch noise above this shows veins at full hp (higher = fewer)
+uniform float crack_patch_full_hp = 0.68;  // patch noise above this shows veins at full hp (higher = fewer)
 uniform float crack_patch_dying = 0.15;    // ... and at 0 hp
-uniform float crack_strength_full_hp = 0.6;
+uniform float crack_strength_full_hp = 0.3;
 uniform float crack_strength_dying = 2.2;
-uniform float rim_strength = 0.4;        // grazing ember rim while lit; keep it a hint, never an outline
+uniform float rim_strength = 0.15;       // grazing ember rim while lit; keep it a hint, never an outline
 
 instance uniform float time_offset = 0.0;
 instance uniform float dissolve : hint_range(0.0, 1.0) = 0.0;
@@ -57,7 +57,7 @@ void vertex() {
 }
 
 void fragment() {
-	float n = texture(tatter_tex, UV * vec2(6.0, 2.0)).r;   // narrow notches: wide ones read as legs
+	float n = texture(tatter_tex, UV * vec2(4.0, 1.3)).r;   // uneven notches: very wide ones read as legs, regular ones as teeth
 	// Tatters: in the lower band the cut-off rises toward the hem, eating notches out of it.
 	float band = clamp(1.0 - UV.y / tatter_band, 0.0, 1.0);
 	float cut = tatter_threshold * band * band;

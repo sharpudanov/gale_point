@@ -18,16 +18,16 @@ const RING_SUBDIV: int = 2   ## rings generated per PROFILE interval (cubic inte
 const PROFILE: Array[Vector4] = [
 	Vector4(2.12, 0.015, 0.02, 0.17), Vector4(2.07, 0.06, 0.08, 0.11), Vector4(2.00, 0.12, 0.15, 0.04),
 	Vector4(1.93, 0.17, 0.21, -0.02), Vector4(1.85, 0.205, 0.245, -0.06), Vector4(1.77, 0.215, 0.24, -0.06),
-	Vector4(1.70, 0.22, 0.22, -0.05), Vector4(1.64, 0.25, 0.21, -0.03), Vector4(1.58, 0.30, 0.20, -0.01),
-	Vector4(1.50, 0.33, 0.21, 0.0), Vector4(1.38, 0.32, 0.22, 0.01), Vector4(1.22, 0.29, 0.22, 0.02),
-	Vector4(1.02, 0.27, 0.23, 0.03), Vector4(0.82, 0.29, 0.26, 0.04), Vector4(0.62, 0.34, 0.31, 0.05),
-	Vector4(0.42, 0.41, 0.38, 0.07), Vector4(0.22, 0.47, 0.45, 0.09), Vector4(0.06, 0.53, 0.52, 0.11),
-	Vector4(-0.10, 0.58, 0.58, 0.13),
+	Vector4(1.70, 0.22, 0.22, -0.05), Vector4(1.64, 0.27, 0.21, -0.03), Vector4(1.58, 0.36, 0.20, -0.01),
+	Vector4(1.50, 0.40, 0.21, 0.0), Vector4(1.38, 0.38, 0.22, 0.01), Vector4(1.22, 0.32, 0.22, 0.02),
+	Vector4(1.02, 0.28, 0.23, 0.03), Vector4(0.82, 0.27, 0.25, 0.04), Vector4(0.62, 0.29, 0.27, 0.05),
+	Vector4(0.42, 0.32, 0.31, 0.07), Vector4(0.22, 0.36, 0.36, 0.09), Vector4(0.06, 0.40, 0.41, 0.11),
+	Vector4(-0.10, 0.44, 0.46, 0.13),
 ]
-const PLEAT_DEPTH: float = 0.07      ## radial fold depth at the hem (fraction of the radius)
+const PLEAT_DEPTH: float = 0.12      ## radial fold depth at the hem (fraction of the radius)
 const PLEAT_TOP_Y: float = 1.45      ## no folds above this height (the mantle lies flat on the shoulders)
 const PLEAT_BOTTOM_Y: float = 0.2    ## full fold depth below this height
-const HEM_NOISE: float = 0.2         ## ragged hem: vertical noise amplitude
+const HEM_NOISE: float = 0.28        ## ragged hem: vertical noise amplitude
 const HEM_NOISE_TOP_Y: float = 0.5
 ## Hood opening: an oval cut out of the front of the hood, centred on the face.
 const HOOD_OPEN_Y: float = 1.86
@@ -36,19 +36,19 @@ const HOOD_OPEN_HALF_ANGLE: float = 0.62   ## radians either side of straight ah
 
 ## Arms as quadratic curves [shoulder, elbow (control point), wrist]. The right arm hangs forward (a Lantern
 ## Captain's hook starts at that hand, see CaptainLantern.hook_from); the left reaches for the player.
-const ARM_RIGHT: Array[Vector3] = [Vector3(0.27, 1.52, 0.0), Vector3(0.40, 1.25, -0.18), Vector3(0.42, 1.04, -0.54)]
-const ARM_LEFT: Array[Vector3] = [Vector3(-0.27, 1.52, 0.0), Vector3(-0.40, 1.36, -0.26), Vector3(-0.26, 1.30, -0.62)]
+const ARM_RIGHT: Array[Vector3] = [Vector3(0.32, 1.50, 0.0), Vector3(0.44, 1.25, -0.18), Vector3(0.42, 1.04, -0.54)]
+const ARM_LEFT: Array[Vector3] = [Vector3(-0.32, 1.50, 0.0), Vector3(-0.44, 1.36, -0.26), Vector3(-0.26, 1.30, -0.62)]
 const SLEEVE_ROWS: int = 10
 const SLEEVE_SIDES: int = 10
-const SLEEVE_RADIUS: Vector3 = Vector3(0.075, 0.055, 0.085)   ## at the shoulder, the forearm and the cuff
-const SLEEVE_DROOP: float = 0.26     ## how far the underside of the cuff hangs below the wrist (a pointed drape)
-const HAND_SCALE: float = 1.15
+const SLEEVE_RADIUS: Vector3 = Vector3(0.09, 0.06, 0.09)   ## at the shoulder, the forearm and the cuff
+const SLEEVE_DROOP: float = 0.4      ## how far the underside of the cuff hangs below the wrist (a pointed drape)
+const HAND_SCALE: float = 1.5        ## oversized on purpose: the fingers have to read at 8 to 10 m
 const FINGER_LENGTHS: Array[float] = [0.085, 0.105, 0.10, 0.08]
 
 ## Face: half-width, half-height and depth of the mask; it sits recessed behind the hood brim, bowed forward.
 const FACE_SIZE: Vector3 = Vector3(0.078, 0.125, 0.07)
-const FACE_POS: Vector3 = Vector3(0.0, 1.875, -0.10)
-const FACE_BOW: float = 0.2          ## radians the head is bowed toward the player
+const FACE_POS: Vector3 = Vector3(0.0, 1.875, -0.075)
+const FACE_BOW: float = 0.28         ## radians the head is bowed toward the player (the brow shadows the eyes)
 const FACE_COLS: int = 18
 const FACE_ROWS: int = 26
 
@@ -165,8 +165,8 @@ static func build() -> Node3D:
 		var eye: MeshInstance3D = MeshInstance3D.new()
 		eye.name = "Eye"
 		var es: SphereMesh = SphereMesh.new()
-		es.radius = 0.014
-		es.height = 0.028
+		es.radius = 0.011
+		es.height = 0.022
 		es.radial_segments = 8
 		es.rings = 4
 		eye.mesh = es
@@ -179,7 +179,7 @@ static func build() -> Node3D:
 
 static func _face() -> StandardMaterial3D:
 	if _face_mat == null:
-		_face_mat = _std(Color(0.2, 0.215, 0.21), 0.65)
+		_face_mat = _std(Color(0.09, 0.1, 0.1), 0.85)
 		_face_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return _face_mat
 

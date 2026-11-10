@@ -59,8 +59,8 @@ extends Node3D
 @export var shoulder_y: float = 1.35
 @export_group("Searing (lit)")
 @export var sear_response: float = 6.0       ## 1/s: how fast the ember glow rises and fades
-@export var sear_face_energy: float = 0.25   ## a dim death mask: the ember eyes carry the look, not the face
-@export var sear_eye_energy: float = 3.0
+@export var sear_face_energy: float = 0.12   ## a dim death mask: the ember eyes carry the look, not the face
+@export var sear_eye_energy: float = 1.8
 @export var sear_color: Color = Color(1.0, 0.55, 0.22)
 @export var steam_amount: int = 16
 @export var steam_lifetime: float = 1.6
@@ -686,7 +686,7 @@ func _build_steam() -> void:
 	var ramp: Gradient = Gradient.new()
 	ramp.offsets = PackedFloat32Array([0.0, 0.2, 0.6, 1.0])
 	ramp.colors = PackedColorArray([
-		Color(1.0, 0.55, 0.22, 0.0), Color(1.0, 0.55, 0.22, 0.5),
+		Color(0.85, 0.6, 0.42, 0.0), Color(0.85, 0.6, 0.42, 0.25),
 		Color(0.62, 0.58, 0.55, 0.28), Color(0.5, 0.5, 0.52, 0.0)])
 	var ramp_tex: GradientTexture1D = GradientTexture1D.new()
 	ramp_tex.gradient = ramp

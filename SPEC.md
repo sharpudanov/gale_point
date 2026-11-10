@@ -311,10 +311,11 @@ layer 1).
 
 **Build** (`DrownedBuilder`):
 - Height 2.1 m.
-- Cloak: lathe ArrayMesh, 12 rings × 24 segments. Radius profile hood 0.18 → shoulders 0.42 → hem 0.55. Per-vertex hem length noise of ±0.15 m.
-- Two sleeve strips: quad strips 0.12 × 0.7 m, using the cloth shader.
-- Face: sphere r 0.11, scaled (1, 1.3, 0.8), recessed 0.12 m in the hood. Albedo (0.55, 0.56, 0.55), roughness 0.5. Two eye-socket spheres r 0.02, albedo (0.02, 0.02, 0.02).
-- Hands: capsules r 0.03, length 0.18, albedo (0.50, 0.51, 0.50).
+- It must read as a gaunt, stooped, hooded figure in pure silhouette: unlit it is black cloth against the sea, so the outline carries everything. Shape constants are in `DrownedBuilder`.
+- Cloak: swept-ring ArrayMesh from `PROFILE` (oval rings: pointed hood, shoulders, forward stoop, pleats, a ragged hem that trails behind and reaches below the feet). UV.y is height, UV seam at the back.
+- Sleeves: bent tapered tubes with a hanging cuff, using the cloth shader. `ARM_RIGHT` hangs forward (a captain's lantern hook starts at that hand), `ARM_LEFT` reaches for the player: the pose is asymmetric on purpose.
+- Face: a pale death mask with open eye sockets and a slack mouth in front of a black skull, recessed and bowed inside the hood. Albedo only, so it shows only when a light finds it. Two small eye spheres deep in the sockets stay black until searing.
+- Hands: palm, four fingers and a thumb, pale albedo.
 - Hitbox: Area3D on the Drowned root (not `_body`, which is animated every frame): capsule r 0.58, h 2.15 at y 1.05 plus a shoulder/sleeve box 1.10 x 0.75 x 0.65 at y 1.35. Casts shadows. The rifle does not rely on it alone: `Rifle._hitscan` casts a world-only ray (layer 1) for the travel distance, then tests every living Drowned with an exact ray-vs-vertical-cylinder check (centre = `global_position + _body.position + (0, 1.05, 0)`, y -0.3..+2.35, r 0.75 plus tan(1.2 deg) x range) and takes the closest one within 0.4 m of the world hit; the Area3D ray is only a fallback.
 - **Emission only while "searing" (lit, so shootable).** Unlit cloth has no emission and no rim. While `lit` the cloth shader (`lit_amount`, smoothed 0..1) adds `Color(1.0, 0.55, 0.22) * 2.2` as a grazing rim plus crack veins, strongest on hood and shoulders; the cracks widen and brighten as hp drops (`damage_amount = 1 - hp/100`). The face and eye sockets get warm emission, and a steam/ash particle emitter rises from the shoulders. All of it is shading and particles: no light node, never a gameplay light.
 - **Hit feedback (PostFx `Reticle`):** lit hit = 4 golden `#FFB266` X-ticks for 0.22 s (bigger on a kill); dark (immune) hit = cold slate-blue deflect ring for 0.25 s plus a dull metallic "tonk" (`Soundscape.play_deflect`). Hit/kill/dark counts: `fx.hit_markers`, `audio.deflects`.
@@ -550,10 +551,11 @@ Equirectangular lookup: `uv = (atan(dir.x, −dir.z)/TAU + 0.5 + hdri_yaw/TAU, a
 |---|---|
 | `cloth_color` / `roughness` / `specular` | (0.035, 0.04, 0.045) / 0.45 / 0.6 (wet sheen) |
 | `wind_dir` / `wind_strength` | pushed (normalized wind, 0–1 from speed / 13) |
-| `flutter_amp` / `flutter_freq` / `flutter_wavelength` | 0.12 m / 2.3 Hz / 0.9 m |
+| `flutter_amp` / `flutter_freq` / `flutter_wavelength` | hem flutter; kept low enough that the outline never zigzags |
 | `drag_offset` | pushed per instance: −velocity × 0.12, so the hem trails behind |
-| `hem_weight_pow` | 1.6 (weight = pow(1 − UV.y, p); hood fixed, hem moves most) |
-| `tatter_tex` / `tatter_threshold` / `tatter_band` | NoiseTexture2D / 0.45 / lower 30% of the cloak |
+| `hem_weight_pow` | weight = pow(1 − UV.y, p), UV.y = height: hood and shoulders hold their shape, the hem moves most |
+| `tatter_tex` / `tatter_threshold` / `tatter_band` | NoiseTexture2D (mipmapped) cuts narrow notches out of the lowest part of the cloak |
+| `crack_*` / `rim_strength` | searing look: a few ember veins in patches that spread as hp drops, and a faint rim. Never a full outline, never a fine glitter pattern |
 | `dissolve` | 0 → 1 on death (noise-thresholded `ALPHA_SCISSOR`) |
 | `instance uniform time_offset` | random per Drowned |
 
@@ -675,6 +677,7 @@ overrides: { requested:int, applied:int }                                   (onl
 | `dawn_card` | `--night_t=319 --no_waves --player_at=-6,-10 --look=270,2`, captured with **120 frames** (the clock hits `won` at 1 s, the card is full at 3 s) | the "Dawn." card: small serif, about 60% opacity, centred, over the cold sunrise; nothing else on screen |
 | `wounded_dark` `captain` `torch` `flare_burst` `brazier` `bells` `overdrive` `shove` | iteration 1, see `ShotPresets` | wound smolder in the dark, Lantern Captain silhouette + lantern, walking torch lighting its pack, flare burst, lit brazier + cask, tolling buoy, beam overdrive, rifle-butt shove |
 | `map` | `--night_t=15 --no_waves --no_lightning --map`; capture with 2 frames | tool view, not art: labels readable and on their props, boundary on the shore, `layout problems: 0` |
+| `drowned_dark` | `--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --spawn_at=0.4,10;-2.5,13` | the unlit silhouette at 3 m and 6 m: hood, stoop, sleeves, hands, hem |
 | `drowned_close` | `--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --pre_trails --place_flare=18 --spawn_at=0.5,11;-3,16` | cloth flutter, tattered hem, faint pale face, silhouette against the flare glow, wet trail, drips |
 
 ---

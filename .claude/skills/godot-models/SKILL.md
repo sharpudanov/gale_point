@@ -16,9 +16,24 @@ A model built in code costs thousands of tokens per art round and still reads as
 
 ## What to do when something needs a shape
 1. **Reuse.** Check `ASSETS.md`. A tint, a scale or two whole models parented together is fine.
-2. **Poly Haven has it** (props, rocks, tools, furniture, plants; it has no characters or creatures):
-   asset-fetcher agent. Give it an exact slug when you know one.
+2. **Fetch it** with the asset-fetcher agent (CC0 only). Props, rocks, tools, furniture, plants: Poly
+   Haven, with an exact slug when you know one. Characters, creatures, animations: a CC0 page on
+   OpenGameArt (give it the page URL or a plain description).
 3. **Otherwise: placeholder now, brief to the user, move on.** Gameplay does not wait for art.
+
+## Animated humanoids: start from what is installed
+`res://assets/animations/ual1/ual1.glb` and `ual2/ual2.glb` (Quaternius, CC0) are one rigged 1.83 m
+mannequin (13.7k triangles, node path `*/Skeleton3D/Mannequin`, own `AnimationPlayer`). Useful clips:
+- ual1: `Idle` `Walk` `Jog_Fwd` `Sprint` `Crouch_Idle` `Crouch_Fwd` `Hit_Chest` `Hit_Head` `Death01`
+  `Swim_Fwd` `Swim_Idle` `Idle_Torch` `Push` `Punch_Jab` `Sword_Attack` `Interact`
+- ual2: `Zombie_Idle` `Zombie_Walk_Fwd` `Zombie_Scratch` `Hit_Knockback` `Idle_Lantern` `Melee_Hook`
+  `ClimbUp_1m_RM` `LayToIdle` `OverhandThrow` `Walk_Carry`
+The two files have different skeletons (53 and 65 bones), so one body plays clips from one file only;
+pick the file by the clips the creature needs. A humanoid enemy is the mannequin from that file with
+its materials replaced (`set_surface_override_material`, or the project's cloth shader as
+`material_override`), driven by its own `AnimationPlayer`. Clips ending in `_RM` move the root: avoid
+them, code moves the body. A different character mesh can use these clips only if it is skinned to the
+same skeleton; retargeting another rig is editor work for the user, not code.
 
 ## Placeholder budget
 At most 3 built-in primitives (`BoxMesh`, `CapsuleMesh`, `CylinderMesh`, `SphereMesh`, `QuadMesh`), one
@@ -38,9 +53,8 @@ Look: <one line from SPEC.md section 13 plus what the silhouette must say>
 Licence: CC0 or made / owned by you
 ```
 Budgets: enemy seen in groups 10k, first-person weapon 20k (the rifle is 20k), prop 5k.
-Where the user can get one (Claude does not download these): Blender; Quaternius / Kenney / Sketchfab
-"CC0" filter / OpenGameArt; an image-to-3D generator cleaned up in Blender; Mixamo for a humanoid rig and
-clips. The user records source and licence; Claude adds the `ASSETS.md` row.
+Where the user can get what the fetcher cannot (login-only sites): Sketchfab "CC0" filter, Mixamo, an
+image-to-3D generator, or Blender. The user records source and licence; Claude adds the `ASSETS.md` row.
 
 ## Intake: a file arrived
 ```bash

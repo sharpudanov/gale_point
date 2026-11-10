@@ -1,7 +1,7 @@
 # Assets
 
-All third-party assets are CC0 from Poly Haven, added only via the asset-fetcher agent
-(`tools/polyhaven.sh get ...`, which appends rows here).
+All third-party assets are CC0, added only via the asset-fetcher agent: Poly Haven
+(`tools/polyhaven.sh get ...`, which appends rows here) and CC0 files from OpenGameArt (rows added by hand).
 
 | Asset | Type | Res | Path | Source | Author(s) | License | Added |
 |---|---|---|---|---|---|---|---|
@@ -22,3 +22,5 @@ All third-party assets are CC0 from Poly Haven, added only via the asset-fetcher
 | Bolt Action Rifle 7.62 | models | 2k | res://assets/models/bolt_action_rifle_7_62/ | https://polyhaven.com/a/bolt_action_rifle_7_62 | Mateusz Sadek | CC0 | 2026-11-09 |
 | Lantern 01 | models | 1k | res://assets/models/Lantern_01/ | https://polyhaven.com/a/Lantern_01 | Rajil Jose Macatangay | CC0 | 2026-11-09 |
 | Wine Barrel 01 | models | 1k | res://assets/models/wine_barrel_01/ | https://polyhaven.com/a/wine_barrel_01 | James Ray Cock | CC0 | 2026-11-09 |
+| Universal Animation Library (Standard) | animations | - | res://assets/animations/ual1/ | https://opengameart.org/content/universal-animation-library | Quaternius | CC0 | 2026-11-10 |
+| Universal Animation Library 2 (Standard) | animations | - | res://assets/animations/ual2/ | https://opengameart.org/content/universal-animation-library-2 | Quaternius | CC0 | 2026-11-10 |

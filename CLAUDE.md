@@ -129,7 +129,10 @@ Knowledge
   many primitives). Allowed: a placeholder of at most 3 built-in primitives, and systems (terrain, ocean,
   sky, particles). Existing code-built models (`DrownedBuilder`, viewmodel hands) are frozen: bug fixes
   only. Anything that needs a real shape is a model brief for the user (godot-models skill).
-- Claude adds assets only via the **asset-fetcher** agent (Poly Haven CC0, 1k–2k, into
-  `res://assets/<type>/<name>/`, logged in `ASSETS.md`). No other sources, no manual downloads.
+- Claude adds assets only via the **asset-fetcher** agent, CC0 only, into `res://assets/<type>/<name>/`,
+  logged in `ASSETS.md`: Poly Haven (props, textures, HDRIs, 1k–2k) and CC0 pages on OpenGameArt
+  (characters, animations). No login-only sites, no other licences.
+- Humanoid motion comes from `res://assets/animations/ual1|ual2/` (Quaternius, a rigged mannequin with
+  about 90 clips). Animate with those clips before writing any procedural body animation.
 - The user may drop their own `.glb` into `res://assets/models/<name>/`; Claude inspects it with the
   godot-models skill and adds the `ASSETS.md` row (source and licence from the user).

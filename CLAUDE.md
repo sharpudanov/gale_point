@@ -3,7 +3,11 @@
 - **Engine:** Godot 4.7.2-stable (standard, not .NET), Forward+. Binary path lives ONLY in
   `tools/env.sh` (`$GODOT`); scripts source it. Never hard-code the path elsewhere.
 - **SPEC.md is the source of truth** for design and ART DIRECTION. Update it when decisions change.
-  It is over 1,000 lines: `grep -n '^## \|^### ' SPEC.md` and Read only the sections you need.
+  It is over 700 lines: `grep -n '^## \|^### ' SPEC.md` and Read only the sections you need.
+- SPEC holds intent, rules and open issues. Numbers live in `@export` defaults, plans in `tests/`,
+  assets in `ASSETS.md`: never copy them into SPEC. Section 14 lists open issues only; a closed issue is
+  deleted, not annotated. `DESIGN_LOG.md` "Shipped Changes" keeps the last two iterations; older ones
+  move to `docs/SPEC_HISTORY.md`, an archive you don't read unless asked.
 
 ## Code rules
 - Godot 4 syntax only: `@export`/`@onready`, `await`, `super()`, `sig.connect(callable)`,

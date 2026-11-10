@@ -14,6 +14,7 @@
       "Bash(curl *https://api.polyhaven.com/*)",
       "Bash(curl *https://dl.polyhaven.org/*)",
       "Bash(curl *https://polyhaven.com/llms.txt*)",
+      "Bash(curl *https://opengameart.org/*)",
       "WebFetch(domain:polyhaven.com)",
       "WebFetch(domain:api.polyhaven.com)",
       "mcp__godot-ai__editor_state",

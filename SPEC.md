@@ -753,8 +753,9 @@ Open items only. Delete an item when it is fixed; history is in `docs/SPEC_HISTO
 ### UI
 - Shell: `PauseMenu` (Esc: resume, restart night, fullscreen, quit; F11) exists. Still missing: a title
   screen, settings (volume, mouse sensitivity) and a restart hint on the dawn card.
-- The player has no hands on the rifle or flare gun. MODEL WANTED: first-person arms (CC0, rigged or
-  posed for a rifle hold), about 8k triangles; no code-built hands.
+- First-person arms (`ViewmodelBuilder.arm`, imported CC0 model) are placed rigidly on the rifle and the
+  flare gun: bare, untextured-looking skin, no sleeves, and the right hand does not follow the bolt. The
+  flare gun hold has not been looked at in a frame. Unplayed.
 - Drowned wade chest-deep over the sea (`rig_wade_depth`) but have no swim or climb-ashore motion and no
   wake; unplayed.
 

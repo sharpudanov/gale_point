@@ -12,6 +12,14 @@ const PAINT_DIR: String = "res://assets/textures/painted_metal_shutter/painted_m
 const VIEWMODEL_LAYER: int = 2
 const RIFLE_MODEL: String = "res://assets/models/bolt_action_rifle_7_62/bolt_action_rifle_7_62_2k.gltf"
 const RIFLE_TINT: Color = Color(0.42, 0.42, 0.44)   ## the Poly Haven wood is bright orange: dim it for the storm
+const ARMS_MODEL: String = "res://assets/models/fps_arms/fps_arms.fbx"
+const ARMS_SKIN: String = "res://assets/models/fps_arms/new_diff.png"
+const ARMS_TINT: Color = Color(0.3, 0.3, 0.32)   ## cold and dim, like the rifle: bare skin must not glow in the storm
+const ARM_CURL_DEG: float = -68.0
+## Rifle hold: [wrist, forearm direction, palm direction] in rifle space (-Z forward).
+const RIFLE_HAND_R: Array[Vector3] = [Vector3(0.045, -0.13, 0.43), Vector3(-0.2, 0.3, -0.93), Vector3(-1.0, 0.0, 0.0)]
+const RIFLE_HAND_L: Array[Vector3] = [Vector3(-0.04, -0.065, -0.07), Vector3(0.6, 0.45, -0.66), Vector3(0.0, 1.0, 0.0)]
+const FLARE_HAND_R: Array[Vector3] = [Vector3(0.02, -0.12, 0.17), Vector3(-0.2, 0.45, -0.87), Vector3(-1.0, 0.0, 0.0)]
 const BARREL_Y: float = 0.05
 const BOLT_Z: float = 0.237      ## bolt pivot behind the origin (model x = -0.237)
 const MUZZLE_Z: float = 0.60
@@ -196,10 +204,61 @@ static func rifle() -> Node3D:
 	muzzle.name = "Muzzle"
 	muzzle.position = Vector3(0.0, BARREL_Y, -MUZZLE_Z)
 	root.add_child(muzzle)
+	for hold: Array[Vector3] in [RIFLE_HAND_R, RIFLE_HAND_L]:
+		var limb: Node3D = arm(1 if hold == RIFLE_HAND_R else -1, hold[0], hold[1], hold[2], ARM_CURL_DEG)
+		if limb != null:
+			root.add_child(limb)
 	return root
 
 
 ## Viewmodel layer, no shadows, and storm-dark materials (the albedo is dimmed).
+## One imported first-person arm ("FPS arms", CC0, see ASSETS.md) placed rigidly: its wrist sits at `wrist`
+## (in the parent's space), the forearm runs along `forearm_dir` into the hand and the palm faces `palm_dir`.
+## The fingers are curled by `curl_deg` per joint; the other arm of the model is collapsed out of sight.
+## side: +1 right, -1 left. Returns null when the model file is missing.
+static func arm(side: int, wrist: Vector3, forearm_dir: Vector3, palm_dir: Vector3, curl_deg: float) -> Node3D:
+	var model: Node3D = ModelKit.spawn(ARMS_MODEL)
+	if model == null:
+		return null
+	model.name = "ArmR" if side > 0 else "ArmL"
+	var sk: Skeleton3D = model.find_child("Skeleton3D", true, false) as Skeleton3D
+	var tag: String = ".R" if side > 0 else ".L"
+	var other: String = ".L" if side > 0 else ".R"
+	var hand: int = sk.find_bone("hand" + tag)
+	var forearm: int = sk.find_bone("forearm" + tag)
+	if hand < 0 or forearm < 0:
+		model.free()
+		return null
+	var to_model: Transform3D = (sk.get_parent() as Node3D).transform * sk.transform
+	var hand_rest: Transform3D = to_model * sk.get_bone_global_rest(hand)
+	var from: Basis = _frame((to_model * sk.get_bone_global_rest(forearm)).basis.y, hand_rest.basis.z)
+	var turn: Basis = _frame(forearm_dir, palm_dir) * from.inverse()
+	model.transform = Transform3D(turn, wrist - turn * hand_rest.origin)
+	for i: int in sk.get_bone_count():
+		var bone: String = sk.get_bone_name(i)
+		if bone.begins_with("f_") and bone.ends_with(tag):
+			sk.set_bone_pose_rotation(i, sk.get_bone_rest(i).basis.get_rotation_quaternion() * Quaternion(Vector3.RIGHT, deg_to_rad(curl_deg)))
+		elif bone == "clavicle" + other or bone == "hand" + other + ".control":
+			sk.set_bone_pose_scale(i, Vector3.ONE * 0.0001)
+	var skin: StandardMaterial3D = StandardMaterial3D.new()
+	if ResourceLoader.exists(ARMS_SKIN):
+		skin.albedo_texture = load(ARMS_SKIN) as Texture2D
+	skin.albedo_color = ARMS_TINT
+	skin.roughness = 0.65
+	for mi: MeshInstance3D in ModelKit.meshes(model):
+		mi.material_override = skin
+		mi.layers = VIEWMODEL_LAYER
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return model
+
+
+## Orthonormal basis whose y runs along `along` and whose z is `facing` made square to it.
+static func _frame(along: Vector3, facing: Vector3) -> Basis:
+	var y: Vector3 = along.normalized()
+	var z: Vector3 = (facing - y * facing.dot(y)).normalized()
+	return Basis(y.cross(z), y, z)
+
+
 static func _dress(node: Node) -> void:
 	if node is MeshInstance3D:
 		var mi: MeshInstance3D = node as MeshInstance3D
@@ -250,9 +309,13 @@ static func flare_gun() -> Node3D:
 	muzzle.position = Vector3(0.0, 0.012, -0.21)
 	root.add_child(muzzle)
 	# Right hand on the grip, sleeve trailing down-right.
-	_part(root, "Hand", _box(Vector3(0.05, 0.06, 0.06)), glove, Vector3(0.0, -0.065, 0.10))
-	_part(root, "Thumb", _box(Vector3(0.012, 0.012, 0.05)), glove, Vector3(-0.028, -0.02, 0.07))
-	_limb(root, "Sleeve", 0.042, Vector3(0.0, -0.075, 0.12), Vector3(0.1, -0.28, 0.34), sleeve)
+	var limb: Node3D = arm(1, FLARE_HAND_R[0], FLARE_HAND_R[1], FLARE_HAND_R[2], ARM_CURL_DEG)
+	if limb != null:
+		root.add_child(limb)
+	else:
+		_part(root, "Hand", _box(Vector3(0.05, 0.06, 0.06)), glove, Vector3(0.0, -0.065, 0.10))
+		_part(root, "Thumb", _box(Vector3(0.012, 0.012, 0.05)), glove, Vector3(-0.028, -0.02, 0.07))
+		_limb(root, "Sleeve", 0.042, Vector3(0.0, -0.075, 0.12), Vector3(0.1, -0.28, 0.34), sleeve)
 	return root
 
 

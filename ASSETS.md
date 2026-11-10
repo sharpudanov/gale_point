@@ -24,3 +24,4 @@ All third-party assets are CC0, added only via the asset-fetcher agent: Poly Hav
 | Wine Barrel 01 | models | 1k | res://assets/models/wine_barrel_01/ | https://polyhaven.com/a/wine_barrel_01 | James Ray Cock | CC0 | 2026-11-09 |
 | Universal Animation Library (Standard) | animations | - | res://assets/animations/ual1/ | https://opengameart.org/content/universal-animation-library | Quaternius | CC0 | 2026-11-10 |
 | Universal Animation Library 2 (Standard) | animations | - | res://assets/animations/ual2/ | https://opengameart.org/content/universal-animation-library-2 | Quaternius | CC0 | 2026-11-10 |
+| FPS Arms (rigged) | models | - | res://assets/models/fps_arms/ | https://opengameart.org/content/fps-arms-rigged-only | OpenGameArt uploader (see page) | CC0 | 2026-11-10 |

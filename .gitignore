@@ -9,6 +9,8 @@ export_credentials.cfg
 
 # Harness
 .captures/
+# tools/export_scene.sh output (generated snapshot of the code-built game tree)
+/snapshot/
 .claude/settings.local.json
 # godot-ai MCP client config: absolute per-machine paths (regenerate: Godot AI dock -> Configure)
 .mcp.json

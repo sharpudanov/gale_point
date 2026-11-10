@@ -69,6 +69,8 @@ Eyes (read the cheapest image that answers the question: sheet, strip or pair be
 - `tools/sweep.sh <preset> <Class.property> v1 v2 [v3 v4]` — several values of a tunable side by side in
   one image. Use it for anything that is a matter of degree instead of guess / capture / guess rounds.
 - `tools/img.sh sheet|diff|stat` — your own contact sheet, or a comparison of two frames.
+- `tools/export_scene.sh [debug args]` — saves the code-built game tree as `res://snapshot/game.tscn`
+  (gitignored) to inspect in the Godot editor. Scripts and audio stripped: a snapshot, not the game.
 
 Numbers
 - `tools/bench.sh [preset]` — real frame rate of a preset against this machine's baseline.

@@ -58,6 +58,9 @@ func _ready() -> void:
 	overrides.load_specs(BootArgs.get_all("set"))
 	overrides.attach(get_tree())
 	_build()
+	if BootArgs.get_value("export_scene", null) != null:
+		_export_scene()   # tools/export_scene.sh: save the built tree as a .tscn, then quit
+		return
 	if shot.is_empty() and DisplayServer.get_name() != "headless":
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -226,6 +229,16 @@ func _place_flare(d: float) -> void:
 	var p: Vector3 = player.global_position + fwd * d
 	p.y = island.height_at(p.x, p.z) + 0.06
 	_placed_flare = weapons.flare_gun.spawn_flare(p, Vector3.ZERO, 3.0)
+
+
+## --export_scene[=res://x.tscn]: let everything settle for two frames, freeze the tree, save it (SceneExporter).
+func _export_scene() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	get_tree().paused = true
+	var v: Variant = BootArgs.get_value("export_scene", "")
+	SceneExporter.save_tree(self, v as String if v is String else "")
+	get_tree().quit()
 
 
 func _add(node: Node, n: String) -> Node:

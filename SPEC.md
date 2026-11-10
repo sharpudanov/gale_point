@@ -613,6 +613,7 @@ Other materials (rain, spray, smoke, sparks, muzzle flash, decals) are `Standard
 | `--snap=dir` / `--snap_frames=a,b,c` | harness (`tools/capture.sh`): save those rendered frames as `fNNNNNNNN.png`, then quit. Run with `--fixed-fps 30` |
 | `--bench=s` | harness (`tools/bench.sh`): record the real frame rate for s seconds, then quit |
 | `--session_log` | force the `SessionLog` recorder on in a headless sim (it then writes `sim_session.jsonl`); windowed normal play records without it |
+| `--export_scene[=res://x.tscn]` | harness (`tools/export_scene.sh`, `SceneExporter`): after two frames, save the built tree (scripts and procedural audio stripped) as a scene for the editor, then quit. Default `res://snapshot/game.tscn` |
 | `--map` / `--map_plain` | harness (`MapView`): top-down orthographic tool view (top = -Z, right = +X, 10 m grid), no fog, rain, mist, beam, PostFx or viewmodel, flat white light from above; labels for props (B, C, W), buoys, rocks as dots, walkable boundary, layout problems. `--map_plain` hides props, rocks, buoys and labels (editor backdrop) |
 
 Explicit args override preset defaults. Unknown args are ignored.

@@ -29,3 +29,4 @@ overdrive --frames=420 --no_waves --no_lightning --player_at=0,-5.3 --look=0,0 -
 sandbox_keys --frames=40 --expect=sandbox.flares==1 --expect=player.hp==3 --expect=waves.forced==1
 # --- Harness: SessionLog flight recorder (forced on in headless; writes .captures/sessions/sim_session.jsonl) ---
 session_log --frames=660 --no_waves --no_lightning --session_log --expect=session.active==true --expect=session.changes==1 --expect=session.errors==0 --expect=session.lines>=3
+pause_menu --frames=30 --no_waves --expect=ui.opens==1 --expect=ui.paused==false

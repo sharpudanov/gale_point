@@ -751,7 +751,12 @@ Open items only. Delete an item when it is fixed; history is in `docs/SPEC_HISTO
 - The shove stock is large and slightly over-lit.
 
 ### UI
-- The dawn card is a plain `Label`: no fade-out and no hint that Enter restarts.
+- Shell: `PauseMenu` (Esc: resume, restart night, fullscreen, quit; F11) exists. Still missing: a title
+  screen, settings (volume, mouse sensitivity) and a restart hint on the dawn card.
+- The player has no hands on the rifle or flare gun. MODEL WANTED: first-person arms (CC0, rigged or
+  posed for a rifle hold), about 8k triangles; no code-built hands.
+- Drowned wade chest-deep over the sea (`rig_wade_depth`) but have no swim or climb-ashore motion and no
+  wake; unplayed.
 
 ### Tests and engine
 - `full_night` does nothing, so no plan covers restocks over a whole night. A plan that walks to the

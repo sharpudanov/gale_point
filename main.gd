@@ -27,6 +27,7 @@ var fire: FireSystem
 var props: IslandProps
 var buoys: BellBuoys
 var sandbox: Sandbox
+var pause_menu: PauseMenu
 var session: SessionLog
 var overrides: TunableOverrides
 var _placed_flare: Flare
@@ -174,6 +175,7 @@ func _build() -> void:
 		sandbox.weather = weather
 		sandbox.island = island
 		_add(sandbox, "Sandbox")
+		pause_menu = _add(PauseMenu.new(), "PauseMenu") as PauseMenu
 
 	# The director runs after the clock (tree order) and pushes into everything built above.
 	add_child(director)
@@ -355,6 +357,8 @@ func get_telemetry() -> Dictionary:
 	t["layout"] = {"problems": Array(problems), "problem_count": problems.size()}
 	if sandbox != null:
 		t["sandbox"] = sandbox.telemetry()
+	if pause_menu != null:
+		t["ui"] = pause_menu.telemetry()
 	if session != null:
 		t["session"] = session.telemetry()
 	if overrides != null and not overrides.is_empty():

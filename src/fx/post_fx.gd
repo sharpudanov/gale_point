@@ -14,7 +14,7 @@ const SHADER_PATH: String = "res://shaders/post_film.gdshader"
 @export var pulse_amp: float = 0.15
 @export_group("End card")
 @export var death_fade_time: float = 1.5
-@export var card_text_death: String = "The light went out."
+@export var card_text_death: String = "The light went out.\n\nEnter: again"
 @export var card_text_dawn: String = "Dawn."
 @export var card_color: Color = Color(0.78, 0.80, 0.84)
 @export var card_alpha: float = 0.6

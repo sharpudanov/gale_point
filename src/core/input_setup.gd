@@ -20,6 +20,7 @@ static func ensure() -> void:
 	_mouse("weapon_toggle", MOUSE_BUTTON_WHEEL_DOWN)
 	_key("release_mouse", KEY_ESCAPE)
 	_key("restart", KEY_ENTER)
+	_key("fullscreen", KEY_F11)
 	_key("screenshot", KEY_F12)
 	_key("screenshot", KEY_P)
 	_key("melee", KEY_F)            # rifle-butt shove

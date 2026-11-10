@@ -19,6 +19,7 @@ extends Node3D
 @export var rig_lean_scale: float = 0.35      ## share of the glide lean kept on top of the clip's own stoop
 @export var rig_attack_range: float = 2.6     ## closer than this to its target it claws
 @export var rig_blend: float = 0.25           ## s, cross-fade between clips
+@export var rig_wade_depth: float = 1.2       ## m of the body under the water surface while over the sea
 @export_group("")
 @export var hover_height: float = 0.25
 @export var bob_amp: float = 0.08
@@ -837,4 +838,7 @@ func _build_drips() -> void:
 
 ## Highest of the island ground and the sea surface at (x, z).
 func _surface(x: float, z: float) -> float:
-	return maxf(_hub.island.height_at(x, z), _hub.ocean.get_height(x, z))
+	var sea: float = _hub.ocean.get_height(x, z)
+	if _rigged:
+		sea -= rig_wade_depth * size_scale   # a body wades chest-deep in the sea; only the cloak glides on it
+	return maxf(_hub.island.height_at(x, z), sea)

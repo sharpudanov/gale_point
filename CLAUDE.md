@@ -103,6 +103,8 @@ Knowledge
 - **moody-lighting**: AgX/fog/SSAO/sun/beam starting values, warm-vs-cold rule, never-list.
 
 ## Workflow per milestone (`/iterate` runs the gameplay loop)
+0. Played first. If no human play session is newer than the last game change, the work is a polish
+   cycle: open issues from SPEC.md section 14, no new mechanic. One new mechanic per cycle at most.
 1. Implement (small steps; the gates stay green). Checkpoint: `git commit` locally after every step that
    leaves the gates green, so a session cut off by the usage limit loses nothing. A new session resumes
    from `git log -5` and Next Horizon in `DESIGN_LOG.md`.

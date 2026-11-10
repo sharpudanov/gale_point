@@ -11,8 +11,13 @@ Follow every step in order. CLAUDE.md rules and gates apply throughout.
    - `bash tools/evidence.sh`: the newest P / F12 screenshots, the digest of the newest human play
      session (`SessionLog`: timeline, P bookmarks, hit ratio, unused tools, frame rate, errors), the
      contact sheet of all presets and recent frames. Read the newest screenshot if it is relevant to
-     $ARGUMENTS. If the evidence is older than the last commit, say so in one line: nobody has played the
-     current build yet.
+     $ARGUMENTS.
+   - Played? Compare the newest session with the last game change
+     (`git log -1 --format=%cd -- src main.gd shaders`). If no session is newer, or it ended before the
+     newest feature could appear (`waves.index` and the unused-tool counts in its `end` line), this is a
+     **polish cycle**: no new mechanic or system. Build from SPEC.md section 14 or a "human test" item
+     under Next Horizon. A concrete request in $ARGUMENTS still wins; say in one line that the last
+     features are unplayed.
    - Read `DESIGN_LOG.md` (Learned Principles and Rejected Clichés are binding).
    - Direction. If $ARGUMENTS is a concrete request (a named fix or feature), skip the game-director and
      build exactly that. Consult the **game-director** agent only when there is playtest evidence newer
@@ -20,8 +25,9 @@ Follow every step in order. CLAUDE.md rules and gates apply throughout.
      pasted verbatim (it has no shell). It runs its Two-Pass Review (cold eyes before SPEC, then the
      3-axis divergence) and returns a <=25-line build + sim guard note. Choose the cohesive subset to
      build; say in one line what you dropped and why.
-   - Size. A cycle has to fit in one usage window. If the subset touches more than about three systems,
-     build the first one this cycle and list the rest under Next Horizon in `DESIGN_LOG.md`.
+   - Size. A cycle has to fit in one usage window and be playable in one sitting: one new mechanic, or
+     up to three open issues from SPEC.md section 14. List the rest under Next Horizon in
+     `DESIGN_LOG.md`.
 
 2. **Implement** in small steps: statically typed GDScript / `.gdshader`, every tunable an
    `@export` with a sensible default, new systems as `class_name` scripts under `res://src/`.
@@ -68,5 +74,7 @@ Follow every step in order. CLAUDE.md rules and gates apply throughout.
    - `git commit` with a clear message (do not stage unrelated pre-existing changes), then
      `git push origin main` so the other machine can pull it.
    - STOP and reply with a short summary and a **"15-Second In-Game Test Recipe (F1-F4)"**: 4-6
-     numbered steps a human can do right after launching the game. Remind them to press P on anything
-     that feels off: the screenshot and the session log are what the next `/iterate` starts from.
+     numbered steps a human can do right after launching the game, features nobody has played yet
+     first. Remind them to press P on anything that feels off (the screenshot and the session log are
+     what the next `/iterate` starts from) and ask for one sentence on what felt worst: that sentence
+     is the argument of the next `/iterate`.

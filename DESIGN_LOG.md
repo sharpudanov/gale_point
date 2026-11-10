@@ -72,3 +72,5 @@ rules and numbers; this log records *why* we changed things and what we refuse t
 - **Tune with humans:** captain aura strength, brazier burn time vs. flare count, shove cooldown.
 - **Fire vs. rain:** heavy rain could shorten oil-pool life at storm peak (ties the weather curve to the
   fire economy).
+- **Harness (parked):** `tools/gate.sh` watches `project.godot` by file time, so an editor re-save
+  reruns the suite. Compare content instead, but only if it happens twice.

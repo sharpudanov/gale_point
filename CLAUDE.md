@@ -98,7 +98,12 @@ Knowledge
   the project and game code never references it. `project.godot` belongs to the editor while it is open.
   `.mcp.json` is per-machine and gitignored (Godot AI dock → Configure writes it).
 
-## Skills (.claude/skills/, tested templates inside)
+## Skills (.claude/skills/, tested templates inside; load the one that fits BEFORE the work, not after a failure)
+- **godot-models**: no modelling in code; placeholder budget, model brief for the user, glTF intake and wiring.
+- **gdscript-craft**: strict-typing error -> fix table, which script to copy, small-file structure, token habits.
+- **game-feel**: diagnosis for "feels weak / plays badly", feedback layers and ranges, one sweep + one human question.
+- **godot-ui**: code-built HUD, menus, pause, cards, settings file.
+- **godot-ship**: export setup, build command, release checklist, store page (not yet run here).
 - **godot-ocean-weather**: Gerstner ocean shader + matching GDScript height, foam, mist, rain, lightning.
 - **moody-lighting**: AgX/fog/SSAO/sun/beam starting values, warm-vs-cold rule, never-list.
 
@@ -120,5 +125,11 @@ Knowledge
    Machine-specific `tools/env.sh` (Godot path) must not be committed from the laptop.
 
 ## Assets
-- Only via the **asset-fetcher** agent (Poly Haven CC0, 1k–2k, into `res://assets/<type>/<name>/`,
-  logged in `ASSETS.md`). No other sources, no manual downloads.
+- **Claude never builds 3D models in code** (no SurfaceTool / ArrayMesh / CSG, no shapes assembled from
+  many primitives). Allowed: a placeholder of at most 3 built-in primitives, and systems (terrain, ocean,
+  sky, particles). Existing code-built models (`DrownedBuilder`, viewmodel hands) are frozen: bug fixes
+  only. Anything that needs a real shape is a model brief for the user (godot-models skill).
+- Claude adds assets only via the **asset-fetcher** agent (Poly Haven CC0, 1k–2k, into
+  `res://assets/<type>/<name>/`, logged in `ASSETS.md`). No other sources, no manual downloads.
+- The user may drop their own `.glb` into `res://assets/models/<name>/`; Claude inspects it with the
+  godot-models skill and adds the `ASSETS.md` row (source and licence from the user).

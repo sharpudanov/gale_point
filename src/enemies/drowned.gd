@@ -59,7 +59,7 @@ extends Node3D
 @export var shoulder_y: float = 1.35
 @export_group("Searing (lit)")
 @export var sear_response: float = 6.0       ## 1/s: how fast the ember glow rises and fades
-@export var sear_face_energy: float = 0.9
+@export var sear_face_energy: float = 0.25   ## a dim death mask: the ember eyes carry the look, not the face
 @export var sear_eye_energy: float = 3.0
 @export var sear_color: Color = Color(1.0, 0.55, 0.22)
 @export var steam_amount: int = 16

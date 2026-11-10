@@ -8,7 +8,7 @@ extends ShootableGear
 
 const MODEL: String = "res://assets/models/Lantern_01/Lantern_01_1k.gltf"
 
-@export var hook_from: Vector3 = Vector3(0.47, 1.0, -0.62)   ## the right hand
+@export var hook_from: Vector3 = Vector3(0.42, 1.02, -0.6)   ## the right hand (DrownedBuilder.ARM_RIGHT)
 @export var hook_tip: Vector3 = Vector3(0.72, 1.5, -1.05)   ## held out, away from the body
 @export var chain_len: float = 0.16
 @export var model_scale: float = 2.4          ## the model is a 0.29 m table lantern; a ship's lantern is ~0.7 m

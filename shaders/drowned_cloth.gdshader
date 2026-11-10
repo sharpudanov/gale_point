@@ -11,13 +11,13 @@ uniform float roughness : hint_range(0.0, 1.0) = 0.75;
 uniform float specular : hint_range(0.0, 1.0) = 0.25;
 uniform vec2 wind_dir = vec2(0.95, 0.32);
 uniform float wind_strength : hint_range(0.0, 1.5) = 0.5;
-uniform float flutter_amp = 0.2;
+uniform float flutter_amp = 0.14;
 uniform float flutter_freq = 2.3;
 uniform float flutter_wavelength = 0.9;
-uniform float hem_weight_pow = 1.2;
-uniform sampler2D tatter_tex : repeat_enable, filter_linear;
+uniform float hem_weight_pow = 2.0;   // UV.y is height (0 hem, 1 hood tip): the upper body holds its shape
+uniform sampler2D tatter_tex : repeat_enable, filter_linear_mipmap;   // mipmaps: thin cracks must not sparkle at range
 uniform float tatter_threshold = 0.6;
-uniform float tatter_band = 0.3;
+uniform float tatter_band = 0.22;
 uniform sampler2D detail_normal : hint_normal, repeat_enable, filter_linear_mipmap;
 uniform sampler2D detail_rough : hint_default_white, repeat_enable, filter_linear_mipmap;
 uniform vec2 detail_tiling = vec2(7.0, 4.0);
@@ -25,9 +25,14 @@ uniform float detail_normal_depth = 0.8;
 uniform vec3 ember_color : source_color = vec3(1.0, 0.55, 0.22);
 uniform float ember_energy = 2.2;
 uniform float rim_power = 5.0;
-uniform vec2 crack_tiling = vec2(5.0, 3.5);
-uniform float crack_width_min = 0.012;   // crack half-width in noise units at full hp
-uniform float crack_width_max = 0.05;    // ... and at 0 hp
+uniform vec2 crack_tiling = vec2(2.0, 1.4);   // few long veins: a fine pattern reads as glitter
+uniform float crack_width_min = 0.02;    // crack half-width in noise units at full hp
+uniform float crack_width_max = 0.06;    // ... and at 0 hp
+uniform float crack_patch_full_hp = 0.5;   // patch noise above this shows veins at full hp (higher = fewer)
+uniform float crack_patch_dying = 0.15;    // ... and at 0 hp
+uniform float crack_strength_full_hp = 0.6;
+uniform float crack_strength_dying = 2.2;
+uniform float rim_strength = 0.4;        // grazing ember rim while lit; keep it a hint, never an outline
 
 instance uniform float time_offset = 0.0;
 instance uniform float dissolve : hint_range(0.0, 1.0) = 0.0;
@@ -52,7 +57,7 @@ void vertex() {
 }
 
 void fragment() {
-	float n = texture(tatter_tex, UV * vec2(3.0, 2.0)).r;
+	float n = texture(tatter_tex, UV * vec2(6.0, 2.0)).r;   // narrow notches: wide ones read as legs
 	// Tatters: in the lower band the cut-off rises toward the hem, eating notches out of it.
 	float band = clamp(1.0 - UV.y / tatter_band, 0.0, 1.0);
 	float cut = tatter_threshold * band * band;
@@ -77,8 +82,12 @@ void fragment() {
 		float cn = texture(tatter_tex, UV * crack_tiling + vec2(0.13, 0.71)).r;
 		float half_w = mix(crack_width_min, crack_width_max, damage_amount);
 		float crack = 1.0 - smoothstep(half_w * 0.4, half_w, abs(cn - 0.5));
+		// The veins only break through in patches; the patches spread over the whole cloak as hp drops.
+		float patch_n = texture(tatter_tex, UV * vec2(1.0, 0.6) + vec2(0.62, 0.35)).r;
+		float patch_edge = mix(crack_patch_full_hp, crack_patch_dying, damage_amount);
+		crack *= smoothstep(patch_edge, patch_edge + 0.12, patch_n);
 		float flicker = 0.85 + 0.15 * sin(TIME * 9.0 + time_offset * 3.0 + UV.y * 20.0);
-		float strength = rim * 0.7 + crack * mix(0.9, 2.2, damage_amount);
+		float strength = rim * rim_strength + crack * mix(crack_strength_full_hp, crack_strength_dying, damage_amount);
 		vec3 e = ember_color * ember_energy * strength * upper * flicker * lit_amount;
 		// Smolder (wounded, any light): only the cracks, with a ragged fast crackle; no rim, so it stays a
 		// wound and never reads as an outline.

@@ -41,6 +41,9 @@ signal hit_marker(kind: String)
 @export var recoil_pitch_deg: float = 5.5
 @export var recoil_yaw_deg: float = 1.5
 @export var shot_trauma: float = 0.12
+@export var kill_trauma: float = 0.22   ## extra camera shake when the shot kills
+
+var kills: int = 0
 @export var kick_back: float = 0.12
 @export var kick_back_ads_scale: float = 0.2   ## ADS: the camera sits just behind the bolt, so the rifle barely slides back
 @export var kick_rot_deg: float = 12.0
@@ -325,6 +328,9 @@ func _hitscan(ads: bool) -> void:
 	target.on_rifle_hit(point, dir, shootable, damage_lit if shootable else damage_dark, headshot)
 	if not target.is_alive():
 		hit_marker.emit("kill")
+		kills += 1
+		_camera.add_trauma(kill_trauma)
+		HitFx.kill_burst(target.get_parent(), point, dir)
 	elif shootable:
 		hit_marker.emit("lit")
 	else:

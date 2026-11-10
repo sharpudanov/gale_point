@@ -15,10 +15,10 @@ const RIFLE_TINT: Color = Color(0.42, 0.42, 0.44)   ## the Poly Haven wood is br
 const ARMS_MODEL: String = "res://assets/models/fps_arms/fps_arms.fbx"
 const ARMS_SKIN: String = "res://assets/models/fps_arms/new_diff.png"
 const ARMS_TINT: Color = Color(0.3, 0.3, 0.32)   ## cold and dim, like the rifle: bare skin must not glow in the storm
-const ARM_CURL_DEG: float = -68.0
+const ARM_CURL_DEG: float = -55.0
 ## Rifle hold: [wrist, forearm direction, palm direction] in rifle space (-Z forward).
 const RIFLE_HAND_R: Array[Vector3] = [Vector3(0.045, -0.13, 0.43), Vector3(-0.2, 0.3, -0.93), Vector3(-1.0, 0.0, 0.0)]
-const RIFLE_HAND_L: Array[Vector3] = [Vector3(-0.04, -0.065, -0.07), Vector3(0.6, 0.45, -0.66), Vector3(0.0, 1.0, 0.0)]
+const RIFLE_HAND_L: Array[Vector3] = [Vector3(-0.04, -0.05, -0.07), Vector3(0.75, 0.22, -0.62), Vector3(0.0, 1.0, 0.0)]
 const FLARE_HAND_R: Array[Vector3] = [Vector3(0.02, -0.12, 0.17), Vector3(-0.2, 0.45, -0.87), Vector3(-1.0, 0.0, 0.0)]
 const BARREL_Y: float = 0.05
 const BOLT_Z: float = 0.237      ## bolt pivot behind the origin (model x = -0.237)

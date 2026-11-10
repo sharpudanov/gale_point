@@ -35,6 +35,15 @@ static func lethal_spark(parent: Node, pos: Vector3, away: Vector3) -> void:
 		Color(1.0, 0.66, 0.35), Color(1.0, 0.66, 0.35), 0.06, false, 4.0)
 
 
+## The kill: a body full of light comes apart. A fountain of embers thrown up and away (70 particles,
+## 1.3 s, falling) plus a cold ash puff. Emissive particles only, no light node: never a gameplay light.
+static func kill_burst(parent: Node, pos: Vector3, away: Vector3) -> void:
+	_burst(parent, pos, (away + Vector3.UP * 1.4).normalized(), 70, 1.3, Vector2(2.5, 7.0), 55.0, Vector3(0.0, -6.0, 0.0),
+		Color(1.0, 0.72, 0.4), Color(1.0, 0.45, 0.16), 0.09, false, 5.0)
+	_burst(parent, pos, Vector3.UP, 26, 1.1, Vector2(0.6, 2.0), 70.0, Vector3(0.0, 0.5, 0.0),
+		Color(0.30, 0.32, 0.35), Color(0.50, 0.53, 0.57), 0.4, true, 0.0)
+
+
 ## Grey mist puff when a dark (harmless) hit lands: 20 particles.
 static func dark_mist(parent: Node, pos: Vector3, away: Vector3) -> void:
 	_burst(parent, pos, away, 20, 0.9, Vector2(0.4, 1.4), 50.0, Vector3(0.0, 0.3, 0.0),

@@ -35,6 +35,15 @@
 `tools/selftest.sh [--fast]` injects faults and proves the gates and tools still work. Run it after
 changing `tools/`, the hooks, `tests/sim_bot.gd` or the `[debug]` settings.
 
+## Harness freeze (the goal is shipping the game)
+- `tools/`, the hooks, `tests/sim_bot.gd` and `.claude/agents|commands|skills` change only for a failure
+  that happened twice. One change at a time, the failure named in the commit message, then
+  `tools/selftest.sh --fast`.
+- A harness idea without such a failure is one line under Next Horizon in `DESIGN_LOG.md`, not code.
+- Adopt before building. An engine bridge with breakpoints and live inspection already exists
+  (gdharness; it would replace godot-ai). Try it on a branch when a runtime bug survives two attempts
+  with `sim.sh` + telemetry, instead of writing new debugging tools.
+
 ## Tools (run them yourself; their output is already compact)
 Logic
 - `tools/sim.sh --plan=res://tests/plans/x.json --frames=600 --expect="path>=v"` — headless sim bot
@@ -83,10 +92,13 @@ Knowledge
 - **moody-lighting**: AgX/fog/SSAO/sun/beam starting values, warm-vs-cold rule, never-list.
 
 ## Workflow per milestone (`/iterate` runs the gameplay loop)
-1. Implement (small steps; the gates stay green).
+1. Implement (small steps; the gates stay green). Checkpoint: `git commit` locally after every step that
+   leaves the gates green, so a session cut off by the usage limit loses nothing. A new session resumes
+   from `git log -5` and Next Horizon in `DESIGN_LOG.md`.
 2. Logic: add a plan + a `tests/suite.txt` line for every new rule; `tools/sim.sh --all`.
 3. Look: `tools/shots.sh`, then the **art-director** agent on the presets that matter. Apply its fixes;
-   max 3 fix rounds, then move on and note leftovers in SPEC.md.
+   one fix round by default (up to 3 when the user asks for a polish pass), then move on and note
+   leftovers in SPEC.md.
 4. `git commit` with a clear message, then `git push` to `origin main` (GitHub:
    `sharpudanov/gale_point`). Project is worked on from two machines (desktop + laptop):
    start of a session = `git pull --ff-only`; end of a milestone = commit + push.

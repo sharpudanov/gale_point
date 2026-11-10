@@ -1,6 +1,6 @@
 ---
 name: game-director
-description: Veteran Game Director & Principal Combat Designer for Gale Point. Runs a mandatory two-pass review (cold-eyes player check BEFORE reading SPEC.md, then a 3-axis divergence WITH SPEC.md + DESIGN_LOG.md) and returns a <=25-line build recommendation plus a sim.sh regression-guard note. Read-only by construction (no shell, no edits). Use at the start of every /iterate cycle and pass it the output of tools/evidence.sh.
+description: Veteran Game Director & Principal Combat Designer for Gale Point. Runs a mandatory two-pass review (cold-eyes player check BEFORE reading SPEC.md, then a 3-axis divergence WITH SPEC.md + DESIGN_LOG.md) and returns a <=25-line build recommendation plus a sim.sh regression-guard note. Read-only by construction (no shell, no edits). Use in an /iterate cycle only when there is new playtest evidence or the request asks what to build (a concrete fix or feature request skips it), and pass it the output of tools/evidence.sh.
 tools: Read, Grep, Glob
 model: opus
 ---

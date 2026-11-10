@@ -14,10 +14,14 @@ Follow every step in order. CLAUDE.md rules and gates apply throughout.
      $ARGUMENTS. If the evidence is older than the last commit, say so in one line: nobody has played the
      current build yet.
    - Read `DESIGN_LOG.md` (Learned Principles and Rejected Clichés are binding).
-   - Consult the **game-director** agent with $ARGUMENTS and the evidence block pasted verbatim (it has no
-     shell). It runs its Two-Pass Review (cold eyes before SPEC, then the 3-axis divergence) and returns
-     a <=25-line build + sim guard note. Choose the cohesive subset to build; say in one line what you
-     dropped and why.
+   - Direction. If $ARGUMENTS is a concrete request (a named fix or feature), skip the game-director and
+     build exactly that. Consult the **game-director** agent only when there is playtest evidence newer
+     than the last commit or $ARGUMENTS asks what to build: pass it $ARGUMENTS and the evidence block
+     pasted verbatim (it has no shell). It runs its Two-Pass Review (cold eyes before SPEC, then the
+     3-axis divergence) and returns a <=25-line build + sim guard note. Choose the cohesive subset to
+     build; say in one line what you dropped and why.
+   - Size. A cycle has to fit in one usage window. If the subset touches more than about three systems,
+     build the first one this cycle and list the rest under Next Horizon in `DESIGN_LOG.md`.
 
 2. **Implement** in small steps: statically typed GDScript / `.gdshader`, every tunable an
    `@export` with a sensible default, new systems as `class_name` scripts under `res://src/`.
@@ -29,6 +33,9 @@ Follow every step in order. CLAUDE.md rules and gates apply throughout.
    - New assets only via the asset-fetcher agent. Add a `--shot` preset in `ShotPresets` for each new
      visual feature and expose new state in `main.get_telemetry()` (add it to
      `SessionLog.summary_paths` when a human session should report it).
+   - Checkpoint: whenever a step leaves the gates green, `git commit` it locally (no push yet; do not
+     stage unrelated pre-existing changes). If the usage limit ends the session, the next one resumes
+     from `git log -5` instead of starting over.
 
 3. **Performance guard:** besides the MoodRig sun, only the lighthouse beam and active flares may use
    `shadow_enabled = true`. Every new secondary light (lanterns, buoys, braziers, embers, fires) uses
@@ -51,8 +58,9 @@ Follow every step in order. CLAUDE.md rules and gates apply throughout.
    - Looks: `bash tools/shots.sh`. ERROR or BLANK must be fixed. For each CHANGED or NEW preset Read its
      pair image (or the contact sheet): intended changes stay, anything else is a regression. For the
      new feature itself `bash tools/capture.sh <preset>` and Read the `strip` (it shows timing and
-     motion); the art-director agent for anything look-critical, max 3 fix rounds, naming the round so
-     it compares with `pair`. Then `bash tools/shots.sh --accept`.
+     motion); the art-director agent for anything look-critical: one fix round by default, up to 3
+     only when the user asks for a polish pass, naming the round so it compares with `pair`. Then
+     `bash tools/shots.sh --accept` and a local checkpoint commit.
 
 6. **Close out**
    - Update `DESIGN_LOG.md`: Learned Principles (only new, durable ones), Rejected Clichés,

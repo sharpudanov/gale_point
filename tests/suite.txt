@@ -1,6 +1,6 @@
 # Regression suite run by `tools/sim.sh --all`. One scenario per line:  <plan-name> <sim args...>
 # Plan = tests/plans/<plan-name>.json. Args are whitespace-separated (no quotes; ';' is fine).
-smoke --frames=120 --expect=physics_frames>=120
+smoke --frames=120 --expect=physics_frames>=120 --expect=layout.problem_count==0
 move --frames=300 --no_waves --no_lightning --expect=player.yaw_deg<=150 --expect=player.yaw_deg>=138 --expect=player.pos.2>=12 --expect=player.on_floor==true --expect=player.hp==3 --expect=camera.fov>=71
 escalation --frames=3900 --night_len=60 --god --expect=time.phase==won --expect=waves.index==6 --expect=enemies.alive==0 --expect=enemies.captains_spawned>=3 --expect=buoys.tolls==6 --expect=audio.bells==21
 rifle --frames=400 --no_waves --no_lightning --expect=weapon.rifle_reserve==8 --expect=weapon.rifle_state==ready --expect=audio.rifle_cracks==2 --expect=weapon.hits_dark==0

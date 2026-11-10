@@ -35,6 +35,8 @@ var shove_at: float = -1.0           ## scripted rifle-butt shove at t seconds
 var aim_cask: int = -1               ## >= 0: --aim at this oil cask instead
 var toll: int = 0                    ## > 0: the buoy nearest the view tolls this many strokes at boot
 var session_log: bool = false        ## force the SessionLog recorder on (headless sims; writes sim_session.jsonl)
+var map: bool = false                ## top-down MapView (layout design); --map_plain implies it
+var map_plain: bool = false          ## MapView without props, rocks, buoys or labels (editor backdrop)
 
 
 static func parse(preset_defaults: Dictionary) -> DebugArgs:
@@ -109,6 +111,8 @@ static func parse(preset_defaults: Dictionary) -> DebugArgs:
 	if v != null:
 		d.toll = int(str(v))
 	d.session_log = get_v.call("session_log") != null
+	d.map_plain = get_v.call("map_plain") != null
+	d.map = d.map_plain or get_v.call("map") != null
 	return d
 
 

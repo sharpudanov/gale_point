@@ -184,6 +184,10 @@ Numbers here are starting values; the `@export` default in code is the truth.
 - Height: `h = plateau_height·(1 − smoothstep(plateau_radius, shore_radius, r')) + seabed_depth·smoothstep(shore_radius−2, seabed_radius, r') + noise`, where `r' = r + warp(angle)`.
 - Material: `wet_rock.gdshader` (§6.3). Collision: `HeightMapShape3D`. `height_at(x, z)` samples the same function.
 - Rocks: Poly Haven models (§11) with convex collision. Their glTF materials get `albedo_color ×0.45` and `roughness 0.3` (wet).
+- Layout rules (`LayoutCheck`, telemetry `layout`, smoke expects 0 problems): braziers, casks and the winch stand on
+  ground ≥ `IslandProps.min_ground`, inside the walkable boundary (`Island.walkable_radius`: per angle, the
+  last radius before the ground first drops below `shore_block_height`), outside the tower plinth, and at least
+  1 m apart; buoys float over ground below sea level. `tools/capture.sh map 2` shows the layout from above.
 
 ### 4.3 Lighthouse
 | Part | Spec |
@@ -600,6 +604,7 @@ Other materials (rain, spray, smoke, sparks, muzzle flash, decals) are `Standard
 | `--snap=dir` / `--snap_frames=a,b,c` | harness (`tools/capture.sh`): save those rendered frames as `fNNNNNNNN.png`, then quit. Run with `--fixed-fps 30` |
 | `--bench=s` | harness (`tools/bench.sh`): record the real frame rate for s seconds, then quit |
 | `--session_log` | force the `SessionLog` recorder on in a headless sim (it then writes `sim_session.jsonl`); windowed normal play records without it |
+| `--map` / `--map_plain` | harness (`MapView`): top-down orthographic tool view (top = -Z, right = +X, 10 m grid), no fog, rain, mist, beam, PostFx or viewmodel, flat white light from above; labels for props (B, C, W), buoys, rocks as dots, walkable boundary, layout problems. `--map_plain` hides props, rocks, buoys and labels (editor backdrop) |
 
 Explicit args override preset defaults. Unknown args are ignored.
 
@@ -633,6 +638,7 @@ lighthouse:{ lamp_on:bool, guttering:bool, beam_yaw }
 fx:        { vignette, damage_vignette, grain }
 audio:     { wind_gain, rain_gain, surf_gain, rifle_cracks:int, kill_thuds:int, flare_hiss_active:bool, moans_played:int,
 			 thunders:int, duck_db (current ambience duck, <= 0), buses:int }
+layout:    { problems:[str], problem_count:int }                             (LayoutCheck, see §4.2)
 session:   { active:bool, lines:int, changes:int, marks:int, errors:int }   (only while SessionLog runs)
 overrides: { requested:int, applied:int }                                   (only with --set)
 ```
@@ -658,6 +664,7 @@ overrides: { requested:int, applied:int }                                   (onl
 | `dawn_sink` | `--night_t=309 --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --spawn_at=-3,16;4,20;-8,26;9,30` | the living Drowned sink and dissolve over 3 s as the storm breaks (mid frame about 1/3 sunk, last frame about 2/3) |
 | `dawn_card` | `--night_t=319 --no_waves --player_at=-6,-10 --look=270,2`, captured with **120 frames** (the clock hits `won` at 1 s, the card is full at 3 s) | the "Dawn." card: small serif, about 60% opacity, centred, over the cold sunrise; nothing else on screen |
 | `wounded_dark` `captain` `torch` `flare_burst` `brazier` `bells` `overdrive` `shove` | iteration 1, see `ShotPresets` | wound smolder in the dark, Lantern Captain silhouette + lantern, walking torch lighting its pack, flare burst, lit brazier + cask, tolling buoy, beam overdrive, rifle-butt shove |
+| `map` | `--night_t=15 --no_waves --no_lightning --map`; capture with 2 frames | tool view, not art: labels readable and on their props, boundary on the shore, `layout problems: 0` |
 | `drowned_close` | `--night_t=120 --no_waves --no_lightning --player_at=0,7 --look=180,-2 --freeze_enemies --pre_trails --place_flare=18 --spawn_at=0.5,11;-3,16` | cloth flutter, tattered hem, faint pale face, silhouette against the flare glow, wet trail, drips |
 
 ---

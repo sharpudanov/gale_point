@@ -34,6 +34,7 @@ const TEX_DIR: String = "res://assets/textures/dark_rock_02/"
 ])
 
 var rock_mat: ShaderMaterial
+var rocks: Array[Node3D] = []
 var _noise: FastNoiseLite
 var _warp: FastNoiseLite
 
@@ -66,6 +67,18 @@ func height_at(x: float, z: float) -> float:
 	h += seabed_depth * smoothstep(shore_radius - 2.0, seabed_radius, rp)
 	h += noise_amp * _noise.get_noise_2d(x, z) * smoothstep(noise_fade.x, noise_fade.y, r)
 	return h
+
+
+## Walkable radius along XZ angle `a` (radians): walking outward from the centre, the last sample before the
+## ground first drops below shore_block_height (the player's shore block). Map view and LayoutCheck.
+func walkable_radius(a: float, step: float = 0.25) -> float:
+	var r: float = 0.0
+	while r < seabed_radius:
+		var nr: float = r + step
+		if height_at(cos(a) * nr, sin(a) * nr) < shore_block_height:
+			return r
+		r = nr
+	return r
 
 
 ## Downhill unit direction (XZ) at a point, for the player's shore block.
@@ -176,6 +189,7 @@ func _scatter_rocks() -> void:
 		rock.rotation = Vector3(GameRng.randf_range(-0.2, 0.2), GameRng.randf_range(0.0, TAU), GameRng.randf_range(-0.2, 0.2))
 		rock.position = Vector3(x, height_at(x, z) - 0.25 * s, z)
 		add_child(rock)
+		rocks.append(rock)
 		for mi: MeshInstance3D in _mesh_instances(rock):
 			_wet_materials(mi)
 			if not shapes.has(mi.mesh):

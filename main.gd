@@ -185,6 +185,11 @@ func _build() -> void:
 	player.died.connect(_on_player_died)
 	clock.won.connect(post_fx.on_won)
 
+	if args.map:
+		var map_view: MapView = MapView.new()
+		map_view.setup(island, lighthouse, props, buoys, mood, weather, post_fx, weapons, start, args.map_plain)
+		_add(map_view, "MapView")
+
 	# Flight recorder for human playtests (harness): windowed normal play only, or forced by --session_log.
 	# --bench=<seconds> (tools/bench.sh): measure the real frame rate of any preset, then quit.
 	var windowed_play: bool = DisplayServer.get_name() != "headless" and shot.is_empty()
@@ -333,6 +338,8 @@ func get_telemetry() -> Dictionary:
 	t["fire"] = fire.telemetry()
 	t["island"] = props.telemetry()
 	t["buoys"] = buoys.telemetry()
+	var problems: PackedStringArray = LayoutCheck.problems(island, props, buoys, lighthouse)
+	t["layout"] = {"problems": Array(problems), "problem_count": problems.size()}
 	if sandbox != null:
 		t["sandbox"] = sandbox.telemetry()
 	if session != null:

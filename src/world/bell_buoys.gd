@@ -141,6 +141,14 @@ func _mesh(parent: Node3D, m: Mesh, mat: Material, pos: Vector3) -> MeshInstance
 	return mi
 
 
+## Buoy positions (XZ is fixed; y rides the swell). Map view and LayoutCheck.
+func points() -> PackedVector3Array:
+	var out: PackedVector3Array = PackedVector3Array()
+	for b: Node3D in _buoys:
+		out.append(b.position)
+	return out
+
+
 ## Index of the buoy closest to the XZ angle `center` (radians).
 func nearest(center: float) -> int:
 	var best: int = 0

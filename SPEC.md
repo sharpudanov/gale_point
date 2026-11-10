@@ -309,7 +309,9 @@ layer 1).
 | dark rifle hit | 0 damage, 0.25 s shudder, mist burst (20 grey particles) |
 | lethal rifle hit | The frame a lit rifle hit kills (`state` → `dying`), before the 1.2 s dissolve starts: an impact burst at the hit point. (a) 40 dark water/cloth splash particles, colour (0.06, 0.07, 0.08) to (0.30, 0.33, 0.36), lifetime 0.7 s, velocity 2–5 m/s in a 60° cone away from the shooter, gravity 9.81, shaded. (b) A brief warm spark: 8 particles, lifetime 0.12 s, colour (1.0, 0.66, 0.35), emissive energy 4, plus no light node (so it never counts as gameplay light). (c) `ProcAudio` kill thud (§4.13), played 3D at the hit point; `audio.kill_thuds += 1`. Not triggered by light or lightning-only deaths. |
 
-**Build** (`DrownedBuilder`):
+**Body** (`DrownedRig`, the default): an imported, animated humanoid (Quaternius UAL2 mannequin, CC0) wearing the cloth shader with hem motion and tatters off. It walks (`Zombie_Walk_Fwd`, paced by its real speed), flinches when staggered or dying (`Hit_Knockback`), claws next to its target (`Zombie_Scratch`) and stands on the rock instead of hovering. Movement, hitboxes and timing stay in code; clips are cosmetic. Two eye spheres on the head bone carry the searing glow. `Drowned.use_rig = false`, or a missing model file, falls back to the code-built cloak below, which is frozen (no further shape work: models are imported, not built in code).
+
+**Fallback build** (`DrownedBuilder`):
 - Height 2.1 m.
 - It must read as a gaunt, stooped, hooded figure in pure silhouette: unlit it is black cloth against the sea, so the outline carries everything. Shape constants are in `DrownedBuilder`.
 - Cloak: swept-ring ArrayMesh from `PROFILE` (oval rings: pointed hood, shoulders, forward stoop, pleats, a ragged hem that trails behind and reaches below the feet). UV.y is height, UV seam at the back.
@@ -737,9 +739,14 @@ Open items only. Delete an item when it is fixed; history is in `docs/SPEC_HISTO
   Flare haze covers about 40% of `flare_fight`.
 
 ### Drowned and viewmodel
-- Close up the Drowned read as a boxy bell with slab sleeves, and as shrubs at range. Ideas: 16 rings,
-  a neck and shoulder notch in `PROFILE`, tapered sleeves, hem lowered onto the rock.
-- The face is a hard-edged pale crescent; it could be fainter and softer.
+- The animated Drowned is a bare mannequin: no hood, no rags, a gym-built outline. MODEL WANTED: a gaunt
+  drowned sailor or hooded figure skinned to the UAL2 skeleton (65 bones), about 10k triangles, CC0.
+- Unplayed: walk pace against real speed (`rig_walk_ref_speed`), the claw range, and whether the head
+  hit sphere (`head_center_y`) still sits on the stooped head.
+- Burning and searing looks were authored for the cloak's height-mapped UVs; on the rig the flames and
+  ember veins are weak, and an impaled flare is no longer hidden inside the body, so `torch` fills
+  about 40% of the frame with warm haze.
+- The Lantern Captain's hook is still a fixed point, not the hand bone; `Idle_Lantern` is unused.
 - At dawn the Drowned dissolve in patches, not as a smooth fade (needs a transparent cloth shader).
 - The shove stock is large and slightly over-lit.
 

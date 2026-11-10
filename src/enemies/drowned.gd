@@ -11,6 +11,15 @@ extends Node3D
 @export var speed_response: float = 4.0
 @export var turn_rate_deg: float = 90.0
 @export var separation: float = 1.5
+@export_group("Animated body (DrownedRig)")
+@export var use_rig: bool = true              ## false, or a missing model file: the code-built cloak
+@export var rig_height: float = 2.0           ## rest-pose height in metres (the walk stoops below it)
+@export var rig_walk_ref_speed: float = 1.5   ## m/s the walk clip covers at speed_scale 1
+@export var rig_walk_scale: Vector2 = Vector2(0.7, 2.0)   ## clamp of the walk clip's speed_scale
+@export var rig_lean_scale: float = 0.35      ## share of the glide lean kept on top of the clip's own stoop
+@export var rig_attack_range: float = 2.6     ## closer than this to its target it claws
+@export var rig_blend: float = 0.25           ## s, cross-fade between clips
+@export_group("")
 @export var hover_height: float = 0.25
 @export var bob_amp: float = 0.08
 @export var bob_hz: float = 0.6
@@ -104,6 +113,8 @@ var lantern: CaptainLantern
 var _hub: Enemies
 var _heading: float = 0.0
 var _body: Node3D
+var _rigged: bool = false
+var _anim: AnimationPlayer
 var _cloth: Array[MeshInstance3D] = []
 var _hitbox: Area3D
 var _drips: GPUParticles3D
@@ -155,15 +166,21 @@ func setup(hub: Enemies, enemy_id: int, xz: Vector2, emerged: bool, enemy_kind: 
 func _ready() -> void:
 	_time_offset = GameRng.randf() * 20.0
 	_moan_t = GameRng.randf_range(moan_first.x, moan_first.y)
-	_body = DrownedBuilder.build()
+	_rigged = use_rig and DrownedRig.available()
+	_body = DrownedRig.build(rig_height) if _rigged else DrownedBuilder.build()
 	_body.scale = Vector3.ONE * size_scale
 	add_child(_body)
-	_cloth = DrownedBuilder.cloth_instances(_body)
-	for mi: MeshInstance3D in _cloth:
-		mi.set_instance_shader_parameter("time_offset", _time_offset)
-	for mi: Node in _body.get_children():
-		if mi is MeshInstance3D:
-			(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	for mi: MeshInstance3D in ModelKit.meshes(_body):
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if mi.has_meta("cloth"):
+			_cloth.append(mi)
+			mi.set_instance_shader_parameter("time_offset", _time_offset)
+	if _rigged:
+		_body.position.y = -hover_height   # feet on the rock: a walking body does not hover
+		_anim = ModelKit.animation_player(_body)
+		if _anim != null:
+			_anim.play(DrownedRig.CLIP_WALK)
+			_anim.seek(fmod(_time_offset, 1.3), true)   # packs do not march in step
 	_build_glow_materials()
 	# Hitbox on the root (the rifle also runs an exact geometric test against the visual centre).
 	_hitbox = Area3D.new()
@@ -585,7 +602,9 @@ func _process(delta: float) -> void:
 	var t: float = _age
 	var k: float = clampf(speed / (base_speed * dark_mult), 0.0, 1.0)
 	var sh: Vector3 = Vector3.ZERO
-	if state != "dying":
+	if _rigged:
+		_update_rig(k)
+	elif state != "dying":
 		_body.position.y = _body.position.y if state == "emerging" else bob_amp * sin(TAU * bob_hz * t + _time_offset)
 	if lit or _shudder_left > 0.0:
 		var amp: float = lit_shudder_amp if lit else 0.0
@@ -596,6 +615,8 @@ func _process(delta: float) -> void:
 	_body.position.x = sh.x
 	_body.position.z = sh.z
 	_body.rotation.x = -deg_to_rad(lean_deg) * k - (deg_to_rad(wound_lean_deg) if (is_wounded() and state != "dying") else 0.0)
+	if _rigged:
+		_body.rotation.x *= rig_lean_scale
 	if _stagger_left > 0.0 and state != "dying":
 		var sk: float = sin(clampf(_stagger_left / 0.9, 0.0, 1.0) * PI * 0.5)
 		_body.rotation.x += deg_to_rad(stagger_lean_deg) * sk
@@ -644,8 +665,31 @@ func _update_sear(delta: float) -> void:
 	_steam.emitting = _sear > 0.05 and state != "dying"
 
 
+## Picks the clip for the current state: flinch while staggered or dying, claw next to the target, else walk
+## at a pace that follows the real speed. Movement itself stays in code; the clips never move the root.
+func _update_rig(pace: float) -> void:
+	if _anim == null:
+		return
+	var clip: StringName = DrownedRig.CLIP_WALK
+	var rate: float = clampf(pace * base_speed * dark_mult / rig_walk_ref_speed, rig_walk_scale.x, rig_walk_scale.y)
+	if state == "dying" or _stagger_left > 0.0:
+		clip = DrownedRig.CLIP_HIT
+		rate = 1.0
+	elif state == "emerging":
+		clip = DrownedRig.CLIP_IDLE
+		rate = 1.0
+	elif global_position.distance_to(_target_point()) < rig_attack_range:
+		clip = DrownedRig.CLIP_ATTACK
+		rate = 1.0
+	if _anim.current_animation != clip and not (clip == DrownedRig.CLIP_HIT and _anim.assigned_animation == clip):
+		_anim.play(clip, rig_blend)
+	_anim.speed_scale = rate
+
+
 func _build_glow_materials() -> void:
-	for mi: MeshInstance3D in DrownedBuilder.glow_instances(_body):
+	for mi: MeshInstance3D in ModelKit.meshes(_body):
+		if not mi.has_meta("glow"):
+			continue
 		var m: StandardMaterial3D = (mi.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D
 		m.emission_enabled = true
 		m.emission = sear_color

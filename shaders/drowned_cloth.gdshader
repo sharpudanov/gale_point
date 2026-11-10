@@ -14,6 +14,7 @@ uniform float wind_strength : hint_range(0.0, 1.5) = 0.5;
 uniform float flutter_amp = 0.14;
 uniform float flutter_freq = 2.3;
 uniform float flutter_wavelength = 0.9;
+uniform float cloth_motion = 1.0;   // 0 on the animated rig (DrownedRig): its UVs are not a height map
 uniform float hem_weight_pow = 2.0;   // UV.y is height (0 hem, 1 hood tip): the upper body holds its shape
 uniform sampler2D tatter_tex : repeat_enable, filter_linear_mipmap;   // mipmaps: thin cracks must not sparkle at range
 uniform float tatter_threshold = 0.6;
@@ -53,7 +54,7 @@ void vertex() {
 	// The flutter pushes outward along the radial direction as well as sideways, so the hem billows.
 	vec3 radial = normalize(vec3(VERTEX.x, 0.0, VERTEX.z) + vec3(0.0001));
 	vec3 off = radial * sway + wind_local * wind_strength * 0.25 + drag_offset;
-	VERTEX += off * w;
+	VERTEX += off * w * cloth_motion;
 }
 
 void fragment() {

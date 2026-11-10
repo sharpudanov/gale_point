@@ -53,7 +53,7 @@ func _ready() -> void:
 		push_error("unknown --shot preset '%s' (see ShotPresets.PRESETS)" % shot)
 	InputSetup.ensure()
 	args = DebugArgs.parse(ShotPresets.defaults(shot))
-	GameRng.seed_with(args.seed)
+	GameRng.seed_with(args.rng_seed)
 	# Harness experiments: --set=Class.property=value overrides @export tunables as nodes enter the tree.
 	overrides = TunableOverrides.new()
 	overrides.load_specs(BootArgs.get_all("set"))

@@ -325,7 +325,9 @@ func _process(delta: float) -> void:
 	var rot: Vector3 = Vector3(sway.x, sway.y + hip_yaw_deg * (1.0 - _ads_amt), 0.0) + sprint_tilt_deg * _sprint_amt + Vector3(-30.0 * sp, 0.0, 0.0) + shove_rot_deg * shove_k
 
 	rifle.ads_amount = _ads_amt
-	var active: Node3D = rifle if _shown == "rifle" else flare_gun
+	var active: Node3D = rifle
+	if _shown != "rifle":
+		active = flare_gun
 	active.position = pos
 	active.rotation_degrees = rot
 

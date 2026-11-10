@@ -3,7 +3,7 @@ extends RefCounted
 ## Typed view of the SPEC §7 debug boot args. Shot-preset defaults are merged underneath;
 ## explicit command-line args always win. Unknown args are ignored.
 
-var seed: int = 1
+var rng_seed: int = 1
 var night_t: float = 0.0
 var night_len: float = 300.0
 var no_waves: bool = false
@@ -42,12 +42,12 @@ var map_plain: bool = false          ## MapView without props, rocks, buoys or l
 static func parse(preset_defaults: Dictionary) -> DebugArgs:
 	var d: DebugArgs = DebugArgs.new()
 	var get_v: Callable = func(key: String) -> Variant:
-		var v: Variant = BootArgs.get_value(key, null)
-		return v if v != null else preset_defaults.get(key, null)
+		var raw: Variant = BootArgs.get_value(key, null)
+		return raw if raw != null else preset_defaults.get(key, null)
 
 	var v: Variant = get_v.call("seed")
 	if v != null:
-		d.seed = int(str(v))
+		d.rng_seed = int(str(v))
 	v = get_v.call("night_t")
 	if v != null:
 		d.night_t = float(str(v))

@@ -15,14 +15,20 @@
 - Static typing everywhere: typed vars, params, returns, typed arrays (`Array[Node3D]`). This is enforced:
   untyped declarations, calls or property access on a `Variant`, and shadowed names are parse errors
   (`[debug]` in `project.godot`). Give a Variant a type before using it (`var d: Dictionary = value`).
-- **Pure-code scenes:** `main.tscn` is a bare Node3D + `main.gd`. All other nodes, materials,
-  environment, lights and UI are built in GDScript via `class_name` scripts in `res://src/`.
-  Never hand-edit or create `.tscn` files for content. The one exception is `map/layout.tscn`, the single
-  source of positions (`MapLayout`): Marker3D braziers, casks, winch and buoys plus rock glTF instances. It holds
-  positions only, no scripts or logic (its marker meshes and `EditorBackdrop` exist only for dragging). The user
-  edits it in the Godot editor; Claude edits marker `transform` lines as text and checks with
-  `tools/capture.sh map 2` and `layout.problem_count`. After the island shape changes, refresh
-  `map/preview/map.png` (last frame of `tools/capture.sh map 2 --map_plain`).
+- **Scenes for things you look at, code for things that happen** (user decision, 2026-11-10: speed and
+  results over purity). Anything that is placed, posed or styled (characters, viewmodel and hand holds,
+  props, menus, HUD layout, effects worth tweaking by eye) lives in a `.tscn` under `res://scenes/`, so the
+  user can drag and tune it in the Godot editor and Claude can edit it as text or through the godot-ai
+  tools. Rules, state, AI, damage, waves and tests stay in `class_name` scripts under `res://src/`.
+  Existing code-built content (ocean, weather, lighting, island, lighthouse) stays as it is until it needs
+  visual work; then it moves to a scene instead of gaining more build code. A script finds its scene's
+  nodes by name, so a scene can be rearranged without touching code.
+- `map/layout.tscn` is the single source of positions (`MapLayout`): Marker3D braziers, casks, winch and
+  buoys plus rock glTF instances. Check edits with `tools/capture.sh map 2` and `layout.problem_count`.
+  After the island shape changes, refresh `map/preview/map.png` (last frame of
+  `tools/capture.sh map 2 --map_plain`).
+- After adding or renaming a script or scene while the editor is open, read the editor console
+  (`logs_read source="editor"`): the headless check passing does not mean the editor has caught up.
 - Tunables are `@export` vars (with sensible defaults), never magic numbers buried in logic.
 - Shaders live in `.gdshader` files, loaded with `load()`; no inline shader code strings.
 - `main.get_telemetry() -> Dictionary` must expose the state tests need (JSON-serializable).
@@ -44,14 +50,16 @@
 `tools/selftest.sh [--fast]` injects faults and proves the gates and tools still work. Run it after
 changing `tools/`, the hooks, `tests/sim_bot.gd` or the `[debug]` settings.
 
-## Harness freeze (the goal is shipping the game)
-- `tools/`, the hooks, `tests/sim_bot.gd` and `.claude/agents|commands|skills` change only for a failure
-  that happened twice. One change at a time, the failure named in the commit message, then
-  `tools/selftest.sh --fast`.
-- A harness idea without such a failure is one line under Next Horizon in `DESIGN_LOG.md`, not code.
-- Adopt before building. An engine bridge with breakpoints and live inspection already exists
-  (gdharness; it would replace godot-ai). Try it on a branch when a runtime bug survives two attempts
-  with `sim.sh` + telemetry, instead of writing new debugging tools.
+## Who decides (user, 2026-11-10: "I told you you are free to change")
+- Claude owns the workflow, the rules in this file, the tools, skills and agents, and the game's design.
+  When something slows the game down or wastes tokens, change it and say so in one line; do not ask
+  first and do not park it. Only destructive or outward-facing steps (deleting the user's work,
+  force-push, publishing a build) still need a yes.
+- The goal is the game, judged by playing it. Tooling work must pay for itself in the same session.
+  Adopt an existing addon, template or asset pack before building one. After changing `tools/` or the
+  hooks, run `tools/selftest.sh --fast`.
+- The user plays and tunes in the editor; Claude builds systems and fixes. Ask for a five-minute play
+  session and three notes rather than judging feel from still frames.
 
 ## Tools (run them yourself; their output is already compact)
 Logic
@@ -86,14 +94,14 @@ Knowledge
   windowed normal-play run to `.captures/sessions/` (timeline, P bookmarks, frame rate, errors).
 - `tools/polyhaven.sh` — used by asset-fetcher only.
 
-## godot-ai MCP (optional, live debugging only)
-- The harness works with the editor closed; nothing above needs the MCP. Never wait on it or use it as
-  a check. If `editor_state` fails, skip it silently.
-- Use it only when the user asks to debug the running game (`project_run`, `editor_manage` `game_eval`,
-  `game_manage`, `editor_screenshot source="game"`). Those open a window on the user's desktop, so they
-  prompt; stop what you start with `project_manage(op="stop")`.
-- Scene / node / resource / script / filesystem / test tools are denied in `.claude/settings.json`:
-  content is pure code. Don't work around the list.
+## godot-ai MCP (the live editor; use it when the editor is open)
+- Use it for what it is good at: reading the editor console, building and adjusting scenes and nodes,
+  screenshots of the editor or the running game, running and stopping the game. It beats rendering
+  frames to check a placement. If `editor_state` fails the editor is closed: fall back to text edits and
+  the headless tools without comment.
+- Running the game opens a window on the user's desktop; stop what you start with
+  `project_manage(op="stop")`.
+- Scripts are still written with Edit / Write (the gates check them), not with the MCP script tools.
 - `addons/godot_ai/` is third-party: never edit it. Its `_mcp_game_helper` autoload is the only one in
   the project and game code never references it. `project.godot` belongs to the editor while it is open.
   `.mcp.json` is per-machine and gitignored (Godot AI dock → Configure writes it).
@@ -125,6 +133,8 @@ Knowledge
    Machine-specific `tools/env.sh` (Godot path) must not be committed from the laptop.
 
 ## Assets
+- Hands, holds, attachments and poses are set in a scene (editor or godot-ai), not by guessing numbers
+  in code and rendering frames.
 - **Claude never builds 3D models in code** (no SurfaceTool / ArrayMesh / CSG, no shapes assembled from
   many primitives). Allowed: a placeholder of at most 3 built-in primitives, and systems (terrain, ocean,
   sky, particles). Existing code-built models (`DrownedBuilder`, viewmodel hands) are frozen: bug fixes

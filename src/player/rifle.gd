@@ -114,7 +114,7 @@ func _ready() -> void:
 	_model = Node3D.new()
 	_model.name = "Model"
 	add_child(_model)
-	var gun: Node3D = ViewmodelBuilder.rifle()
+	var gun: Node3D = ViewmodelBuilder.rifle_view()
 	_model.add_child(gun)
 	_bolt = gun.get_node("Bolt") as Node3D
 	_bolt_base = _bolt.position

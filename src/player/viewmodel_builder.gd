@@ -12,7 +12,9 @@ const PAINT_DIR: String = "res://assets/textures/painted_metal_shutter/painted_m
 const VIEWMODEL_LAYER: int = 2
 const RIFLE_MODEL: String = "res://assets/models/bolt_action_rifle_7_62/bolt_action_rifle_7_62_2k.gltf"
 const RIFLE_TINT: Color = Color(0.42, 0.42, 0.44)   ## the Poly Haven wood is bright orange: dim it for the storm
-const ARMS_MODEL: String = "res://assets/models/fps_arms/fps_arms.fbx"
+const RIFLE_SCENE: String = "res://scenes/viewmodel_rifle.tscn"
+const FLARE_GUN_SCENE: String = "res://scenes/viewmodel_flare_gun.tscn"
+const ARMS_MODEL: String ="res://assets/models/fps_arms/fps_arms.fbx"
 const ARMS_SKIN: String = "res://assets/models/fps_arms/new_diff.png"
 const ARMS_TINT: Color = Color(0.3, 0.3, 0.32)   ## cold and dim, like the rifle: bare skin must not glow in the storm
 const ARM_CURL_DEG: float = -55.0
@@ -213,6 +215,31 @@ static func rifle() -> Node3D:
 
 
 ## Viewmodel layer, no shadows, and storm-dark materials (the albedo is dimmed).
+## The weapon models the game uses: the editable scenes under res://scenes/ (pose the hands, move the arms and
+## restyle materials there, in the Godot editor), or the code-built versions when a scene file is missing.
+## Named children the weapon scripts need must keep their names: rifle "Bolt", "Muzzle"; flare gun "Barrels",
+## "Hammer", "Muzzle".
+static func rifle_view() -> Node3D:
+	var view: Node3D = ModelKit.spawn(RIFLE_SCENE)
+	if view == null:
+		return rifle()
+	# A saved scene cannot delete parts of the imported rifle: drop the scope, the loose cartridge and the
+	# bolt meshes that were moved under "Bolt".
+	var gun: Node = view.get_node_or_null("Gun")
+	if gun != null:
+		for n: Node in gun.get_children():
+			var part: String = String(n.name)
+			if part.contains("scope") or part.contains("bullet") or part.ends_with("_bolt_a") or part.ends_with("_bolt_b"):
+				gun.remove_child(n)
+				n.queue_free()
+	return view
+
+
+static func flare_gun_view() -> Node3D:
+	var view: Node3D = ModelKit.spawn(FLARE_GUN_SCENE)
+	return view if view != null else flare_gun()
+
+
 ## One imported first-person arm ("FPS arms", CC0, see ASSETS.md) placed rigidly: its wrist sits at `wrist`
 ## (in the parent's space), the forearm runs along `forearm_dir` into the hand and the palm faces `palm_dir`.
 ## The fingers are curled by `curl_deg` per joint; the other arm of the model is collapsed out of sight.

@@ -57,7 +57,7 @@ func _ready() -> void:
 	_model = Node3D.new()
 	_model.name = "Model"
 	add_child(_model)
-	var gun: Node3D = ViewmodelBuilder.flare_gun()
+	var gun: Node3D = ViewmodelBuilder.flare_gun_view()
 	_model.add_child(gun)
 	_barrels = gun.get_node("Barrels") as Node3D
 	_hammer = gun.get_node("Hammer") as Node3D
